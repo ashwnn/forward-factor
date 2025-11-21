@@ -112,6 +112,40 @@ All services should show "Up" status:
 - bot (Telegram polling)
 - scheduler (job scheduling)
 - worker (scan processing)
+- frontend (port 3000)
+
+## WebUI Access
+
+The bot includes a web interface for managing your signals and settings:
+
+1. **Access the WebUI**: Navigate to http://localhost:3000
+
+2. **Register an account**:
+   - Click "Register"
+   - Enter your email and password (min 8 characters)
+   - You'll be automatically logged in
+
+3. **Link your Telegram account** (optional):
+   - Go to Settings
+   - Enter your Telegram username (without @)
+   - Click "Link Account"
+
+4. **Manage your watchlist**:
+   - Navigate to "Watchlist"
+   - Add tickers using the form
+   - Remove tickers as needed
+
+5. **View signals**:
+   - Navigate to "Signals" to see recent Forward Factor signals
+   - Click "Place Trade" or "Ignore" to record your decision
+
+6. **Review history**:
+   - Navigate to "History" to see past signals and your decisions
+
+7. **Configure settings**:
+   - Navigate to "Settings"
+   - Adjust FF threshold, vol point, liquidity filters, etc.
+   - Changes apply to both WebUI and Telegram notifications
 
 ## Usage
 
