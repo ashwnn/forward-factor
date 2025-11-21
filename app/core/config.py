@@ -52,7 +52,8 @@ class Settings(BaseSettings):
     frontend_port: int = 3000
     
     # API Configuration
-    api_port: int = 8000
+    backend_port: int = 8000
+    backend_url: str = "http://localhost:8000"
 
 
 # Global settings instance
