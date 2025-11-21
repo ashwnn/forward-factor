@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     
     # Frontend Configuration
     frontend_url: str = "http://localhost:3000"
+    frontend_port: int = 3000
+    
+    # API Configuration
+    api_port: int = 8000
 
 
 # Global settings instance
