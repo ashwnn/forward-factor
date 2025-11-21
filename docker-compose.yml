@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ffbot
       POSTGRES_DB: ffbot
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
@@ -97,6 +97,8 @@ services:
     restart: unless-stopped
     deploy:
       replicas: 2
+    networks:
+      - apps
 
   frontend:
     container_name: ffbot_frontend
