@@ -14,7 +14,7 @@ alembic==1.13.1
 redis==5.0.1
 
 # HTTP Client
-httpx==0.26.0
+httpx==0.25.2
 
 # Scheduling
 apscheduler==3.10.4
