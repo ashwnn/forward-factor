@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -28,7 +28,11 @@ ENV/
 
 # Environment variables
 .env
-.env.local
+/.env.local
+
+# Allow frontend env files
+!frontend/.env.example
+!frontend/.env.local
 
 # IDE
 .vscode/
