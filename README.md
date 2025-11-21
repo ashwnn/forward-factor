@@ -125,6 +125,8 @@ Open Telegram and search for your bot, then:
 /remove TICKER - Remove ticker from watchlist
 /list - Show your watchlist
 /history - View recent signals and decisions
+/settings - View your current settings
+/set <key> <value> - Update a setting (e.g., /set ff_threshold 0.25)
 /help - Show help message
 ```
 

@@ -45,6 +45,7 @@ class UserSettings(Base):
     quiet_hours = Column(JSON, default=lambda: {"enabled": False, "start": "22:00", "end": "08:00"})
     preferred_structure = Column(String, default="ATM_calendar_call", nullable=False)
     timezone = Column(String, default="America/Vancouver", nullable=False)
+    scan_priority = Column(String, default="standard", nullable=False)  # standard, high, turbo
     
     # Relationship
     user = relationship("User", back_populates="settings")

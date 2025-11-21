@@ -2,7 +2,7 @@
 from typing import List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import MasterTicker, Subscription
+from app.models import MasterTicker, Subscription, UserSettings
 from datetime import datetime
 
 
@@ -27,19 +27,45 @@ class TickerService:
         
         ticker_counts = {row[0]: row[1] for row in result.all()}
         
+        # Get max priority per ticker
+        # Join Subscription -> UserSettings to get scan_priority
+        priority_result = await db.execute(
+            select(
+                Subscription.ticker,
+                func.max(UserSettings.scan_priority).label("max_priority")
+            )
+            .join(UserSettings, Subscription.user_id == UserSettings.user_id)
+            .where(Subscription.active == True)
+            .group_by(Subscription.ticker)
+        )
+        
+        ticker_priorities = {row[0]: row[1] for row in priority_result.all()}
+        
         # Update or create master ticker records
         for ticker, count in ticker_counts.items():
             master_ticker = await TickerService.get_or_create_ticker(db, ticker)
             master_ticker.active_subscriber_count = count
             
-            # Determine scan tier based on subscriber count
-            # This is a simple heuristic - can be made more sophisticated
+            # Determine scan tier
+            # Base tier from count
             if count >= 10:
-                master_ticker.scan_tier = "high"
+                tier = "high"
             elif count >= 3:
-                master_ticker.scan_tier = "medium"
+                tier = "medium"
             else:
-                master_ticker.scan_tier = "low"
+                tier = "low"
+            
+            # Override with user priority
+            max_prio = ticker_priorities.get(ticker, "standard")
+            
+            if max_prio == "turbo":
+                tier = "high"
+            elif max_prio == "high":
+                # Upgrade to at least medium, or keep high if already high
+                if tier == "low":
+                    tier = "medium"
+            
+            master_ticker.scan_tier = tier
         
         # Set subscriber count to 0 for tickers no longer subscribed
         result = await db.execute(select(MasterTicker))
