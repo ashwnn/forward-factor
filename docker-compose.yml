@@ -1,5 +1,6 @@
 services:
   postgres:
+    container_name: ffbot_postgres
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: ffbot
@@ -9,6 +10,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - apps
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ffbot"]
       interval: 10s
@@ -16,6 +19,7 @@ services:
       retries: 5
 
   redis:
+    container_name: ffbot_redis
     image: redis:7-alpine
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -24,8 +28,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - apps
 
   api:
+    container_name: ffbot_api
     build: .
     command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
@@ -34,6 +41,8 @@ services:
       - "${API_PORT:-8000}:8000"
     env_file:
       - .env
+    networks:
+      - apps
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,6 +50,7 @@ services:
         condition: service_healthy
 
   bot:
+    container_name: ffbot
     build: .
     command: python -m app.bot.main
     volumes:
@@ -52,6 +62,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - apps
     restart: unless-stopped
 
   scheduler:
@@ -67,6 +79,8 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - apps
 
   worker:
     build: .
@@ -85,6 +99,7 @@ services:
       replicas: 2
 
   frontend:
+    container_name: ffbot_frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -95,6 +110,9 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    networks:
+      - apps
 
-volumes:
-  postgres_data:
+networks:
+  apps:
+    external: true
