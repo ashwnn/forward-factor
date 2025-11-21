@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     default_stability_scans: int = 2
     default_cooldown_minutes: int = 120
     default_timezone: str = "America/Vancouver"
+    
+    # JWT Authentication
+    jwt_secret: str
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440  # 24 hours
+    
+    # Frontend Configuration
+    frontend_url: str = "http://localhost:3000"
 
 
 # Global settings instance

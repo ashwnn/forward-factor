@@ -1,11 +1,31 @@
 """FastAPI application for analytics and monitoring."""
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
+from app.core.config import settings
 from app.services import SignalService
 from typing import List, Optional
 
+# Import routers
+from app.api.routes import auth, watchlist, settings as settings_router, signals
+
 app = FastAPI(title="Forward Factor Signal Bot API", version="1.0.0")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.frontend_url, "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router)
+app.include_router(watchlist.router)
+app.include_router(settings_router.router)
+app.include_router(signals.router)
 
 
 @app.get("/")
@@ -21,7 +41,7 @@ async def get_signals(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Get recent signals.
+    Get recent signals (public endpoint for backward compatibility).
     
     Args:
         ticker: Optional ticker filter

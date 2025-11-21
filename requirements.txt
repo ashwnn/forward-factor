@@ -28,6 +28,11 @@ python-dotenv==1.0.0
 numpy==1.26.3
 pytz==2024.1
 
+# Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+
 # Testing
 pytest==7.4.4
 pytest-asyncio==0.23.3

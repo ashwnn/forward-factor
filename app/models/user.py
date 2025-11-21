@@ -13,7 +13,10 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    telegram_chat_id = Column(String, unique=True, nullable=False, index=True)
+    telegram_chat_id = Column(String, unique=True, nullable=True, index=True)
+    email = Column(String, unique=True, nullable=True, index=True)
+    password_hash = Column(String, nullable=True)
+    telegram_username = Column(String, nullable=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     status = Column(String, default="active", nullable=False)
     
