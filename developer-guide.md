@@ -123,11 +123,11 @@ Signal when (FF \ge \theta) and all quality filters pass.
 
 ## 4. External APIs
 
-### 4.1 Options data: Massive or Polygon
+### 4.1 Options data: Polygon
 
-Both providers offer an option chain snapshot endpoint returning per contract IV, greeks, quotes, and OI, suitable for extracting per expiry ATM or delta based IV. ([massive.com][2])
+Polygon.io provides an option chain snapshot endpoint returning per contract IV, greeks, quotes, and OI, suitable for extracting per expiry ATM or delta based IV. ([polygon.io][3])
 
-Implementation must abstract the provider behind a single interface:
+The provider is abstracted behind a single interface:
 
 **Interface: OptionChainProvider**
 
@@ -135,7 +135,7 @@ Implementation must abstract the provider behind a single interface:
 
   * includes expiries, contracts, IV, delta, bid, ask, volume, OI, underlying price, as of timestamp.
 
-Provider selection is runtime config, allowing fallback if one vendor is down.
+The Polygon provider is fully implemented in `app/providers/polygon.py`.
 
 ### 4.2 Underlying realtime price: Polygon equities snapshot or websocket
 
@@ -515,7 +515,7 @@ On callback:
 
 ## 14. Implementation checklist
 
-1. Build provider adapters for Massive and Polygon chain snapshots. ([massive.com][2])
+1. Build provider adapter for Polygon chain snapshots. ✅ Complete
 2. Implement DB schema migrations.
 3. Implement scheduler plus tiered cadence.
 4. Implement worker pool with caching.

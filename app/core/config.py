@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     
     # API Keys
     polygon_api_key: str
-    massive_api_key: Optional[str] = None
     
     # Scan Cadence (minutes)
     scan_cadence_high: int = 3

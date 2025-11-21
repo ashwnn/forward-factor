@@ -1,6 +1,6 @@
 """Telegram bot main entry point."""
 import logging
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Update
 from app.core.config import settings
 from app.bot.handlers.start import start_command, help_command
 from app.bot.handlers.watchlist import add_command, remove_command, list_command
