@@ -1,5 +1,6 @@
 """Core configuration management using Pydantic settings."""
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 from typing import Optional
 
 
@@ -68,6 +69,21 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string to list."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+    
+    @model_validator(mode='after')
+    def expand_database_url(self) -> 'Settings':
+        """
+        Expand ${POSTGRES_PASSWORD} in database_url if present.
+        
+        Pydantic Settings does NOT expand shell-style ${VARIABLE} references,
+        so we manually replace them with the actual values after loading.
+        """
+        if '${POSTGRES_PASSWORD}' in self.database_url:
+            self.database_url = self.database_url.replace(
+                '${POSTGRES_PASSWORD}',
+                self.postgres_password
+            )
+        return self
 
 
 # Global settings instance
