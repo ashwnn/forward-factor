@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str
+    database_password: str
     postgres_port: int = 5432
     
     # Redis
