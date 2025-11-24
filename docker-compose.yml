@@ -95,7 +95,6 @@ services:
 
   worker:
     build: .
-    container_name: ff-bot-worker
     command: python -m app.workers.scan_worker
     volumes:
       - .:/app
