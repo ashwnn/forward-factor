@@ -43,6 +43,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://ffbot:${POSTGRES_PASSWORD:-ffbot}@postgres:5432/ffbot
+      - REDIS_URL=redis://redis:6379/0
     networks:
       - apps
     depends_on:
@@ -63,6 +66,9 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://ffbot:${POSTGRES_PASSWORD:-ffbot}@postgres:5432/ffbot
+      - REDIS_URL=redis://redis:6379/0
     networks:
       - apps
     depends_on:
@@ -83,6 +89,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://ffbot:${POSTGRES_PASSWORD:-ffbot}@postgres:5432/ffbot
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,6 +113,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://ffbot:${POSTGRES_PASSWORD:-ffbot}@postgres:5432/ffbot
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,6 +136,9 @@ services:
       - .:/app
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://ffbot:${POSTGRES_PASSWORD:-ffbot}@postgres:5432/ffbot
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
