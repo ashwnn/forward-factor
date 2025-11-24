@@ -13,6 +13,13 @@ docker compose down
 echo "Removing old database volume..."
 rm -rf ./data/postgres
 
+echo "Removing old redis volume..."
+rm -rf ./data/redis
+
+echo "Building docker images..."
+docker compose build --no-cache
+
+
 echo "Starting containers with new configuration..."
 docker compose up -d postgres redis
 
