@@ -17,7 +17,7 @@ class SignalUserDecision(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     decision = Column(String, nullable=False)  # placed, ignored, expired, error
     decision_ts = Column(DateTime, default=datetime.utcnow, nullable=False)
-    metadata = Column(JSON, default=dict)
+    decision_metadata = Column(JSON, default=dict)
     
     # Relationships
     user = relationship("User", back_populates="decisions")
