@@ -15,7 +15,7 @@ app = FastAPI(title="Forward Factor Signal Bot API", version="1.0.0")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_url, 'http://bepo:3000', 'http://localhost:3000'],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -56,6 +56,14 @@ class Settings(BaseSettings):
     # API Configuration
     backend_port: int = 8000
     backend_url: str = "http://localhost:8000"
+    
+    # CORS Configuration
+    cors_origins: str = "http://localhost:3000"  # Comma-separated list of allowed origins
+    
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS origins from comma-separated string to list."""
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 # Global settings instance
