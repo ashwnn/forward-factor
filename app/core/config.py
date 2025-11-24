@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str
-    database_password: str
+    postgres_password: str  # Used by docker-compose.yml for PostgreSQL initialization
     postgres_port: int = 5432
     
     # Redis

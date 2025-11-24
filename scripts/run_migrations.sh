@@ -36,17 +36,48 @@ until pg_isready -h postgres -U ffbot; do
 done
 
 echo ""
-echo "Database is ready! Testing connection..."
+echo "Database is ready! Waiting for full initialization..."
+# Give PostgreSQL a moment to fully initialize after accepting connections
+sleep 3
+
+echo "Testing database connection with credentials..."
 echo "-------------------------------------------------------------------"
 
-# Test connection with psql to verify credentials
-if PGPASSWORD="${POSTGRES_PASSWORD:-ffbot}" psql -h postgres -U ffbot -d ffbot -c "SELECT version();" > /dev/null 2>&1; then
-  echo "✓ Database connection test successful"
-else
-  echo "✗ Database connection test FAILED"
+# Test connection with psql to verify credentials with retry logic
+MAX_RETRIES=30
+RETRY_COUNT=0
+CONNECTION_SUCCESS=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+  if PGPASSWORD="${POSTGRES_PASSWORD:-ffbot}" psql -h postgres -U ffbot -d ffbot -c "SELECT version();" > /dev/null 2>&1; then
+    echo "✓ Database connection test successful (attempt $((RETRY_COUNT + 1)))"
+    CONNECTION_SUCCESS=true
+    break
+  else
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+      echo "✗ Connection attempt $RETRY_COUNT failed, retrying in 2 seconds..."
+      sleep 2
+    fi
+  fi
+done
+
+if [ "$CONNECTION_SUCCESS" = false ]; then
   echo ""
-  echo "Attempting to show PostgreSQL logs..."
-  echo "Try running: docker logs ff-bot-postgres"
+  echo "========================================="
+  echo "✗ DATABASE CONNECTION FAILED"
+  echo "========================================="
+  echo ""
+  echo "Failed to connect after $MAX_RETRIES attempts."
+  echo ""
+  echo "PostgreSQL logs (last 30 lines):"
+  echo "-----------------------------------------"
+  docker logs ff-bot-postgres --tail 30 2>&1 || echo "Could not retrieve PostgreSQL logs"
+  echo ""
+  echo "Troubleshooting steps:"
+  echo "1. Verify POSTGRES_PASSWORD in .env matches the value in DATABASE_URL"
+  echo "2. Check if PostgreSQL container started correctly: docker ps -a"
+  echo "3. Try restarting with clean volumes: docker-compose down -v && docker-compose up -d"
   exit 1
 fi
 
