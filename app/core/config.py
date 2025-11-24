@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
     
+    # Registration Control
+    registration_enabled: bool = True  # Set to False to disable new user registrations
+    
     # Frontend Configuration
     frontend_url: str = "http://localhost:3000"
     frontend_port: int = 3000

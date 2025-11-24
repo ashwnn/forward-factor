@@ -54,6 +54,13 @@ async def register(
     
     Returns an access token upon successful registration.
     """
+    # Check if registration is enabled
+    if not settings.registration_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="New user registrations are currently disabled"
+        )
+    
     # Validate password strength
     if len(request.password) < 8:
         raise HTTPException(
