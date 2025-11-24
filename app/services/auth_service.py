@@ -3,9 +3,12 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
+import logging
 
 from app.models.user import User, UserSettings
 from app.core.auth import hash_password, verify_password
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -27,34 +30,50 @@ class AuthService:
         Raises:
             HTTPException: If email already exists
         """
-        # Check if email already exists
-        result = await db.execute(select(User).where(User.email == email))
-        existing_user = result.scalar_one_or_none()
+        logger.info(f"Attempting to register user: {email}")
         
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
+        try:
+            # Check if email already exists
+            logger.debug(f"Checking if email exists: {email}")
+            result = await db.execute(select(User).where(User.email == email))
+            existing_user = result.scalar_one_or_none()
+            
+            if existing_user:
+                logger.warning(f"Registration failed: Email already exists: {email}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email already registered"
+                )
+            
+            # Create new user
+            logger.debug(f"Creating new user: {email}")
+            user = User(
+                email=email,
+                password_hash=hash_password(password),
+                status="active"
             )
-        
-        # Create new user
-        user = User(
-            email=email,
-            password_hash=hash_password(password),
-            status="active"
-        )
-        
-        db.add(user)
-        await db.flush()
-        
-        # Create default settings for user
-        settings = UserSettings(user_id=user.id)
-        db.add(settings)
-        
-        await db.commit()
-        await db.refresh(user)
-        
-        return user
+            
+            db.add(user)
+            await db.flush()
+            logger.debug(f"User created with ID: {user.id}")
+            
+            # Create default settings for user
+            logger.debug(f"Creating default settings for user: {user.id}")
+            settings = UserSettings(user_id=user.id)
+            db.add(settings)
+            
+            await db.commit()
+            await db.refresh(user)
+            
+            logger.info(f"Successfully registered user: {email} (ID: {user.id})")
+            return user
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error registering user {email}: {str(e)}", exc_info=True)
+            await db.rollback()
+            raise
     
     @staticmethod
     async def authenticate_user(email: str, password: str, db: AsyncSession) -> Optional[User]:

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+import logging
 
 from app.core.database import get_db
 from app.core.auth import create_access_token, get_current_user
@@ -13,6 +14,7 @@ from app.services.auth_service import AuthService
 from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
+logger = logging.getLogger(__name__)
 
 
 # Request/Response Models
@@ -54,8 +56,11 @@ async def register(
     
     Returns an access token upon successful registration.
     """
+    logger.info(f"Registration request received for email: {request.email}")
+    
     # Check if registration is enabled
     if not settings.registration_enabled:
+        logger.warning(f"Registration attempt rejected - registrations disabled: {request.email}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="New user registrations are currently disabled"
@@ -63,19 +68,24 @@ async def register(
     
     # Validate password strength
     if len(request.password) < 8:
+        logger.warning(f"Registration failed - weak password: {request.email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters long"
         )
     
     # Register user
+    logger.debug(f"Calling AuthService.register_user for: {request.email}")
     user = await AuthService.register_user(request.email, request.password, db)
     
     # Create access token
+    logger.debug(f"Creating access token for user: {user.id}")
     access_token = create_access_token(
         data={"sub": str(user.id)},
         expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
     )
+    
+    logger.info(f"✓ User registered successfully: {request.email} (ID: {user.id})")
     
     return {
         "access_token": access_token,

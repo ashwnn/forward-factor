@@ -8,23 +8,62 @@ from app.core.config import settings
 from app.services import SignalService
 from typing import List, Optional
 import logging
+import time
+import sys
 
 # Import routers
 from app.api.routes import auth, watchlist, settings as settings_router, signals
 
+# Configure logging
+logging.basicConfig(
+    level=getattr(logging, settings.log_level.upper()),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Forward Factor Signal Bot API", version="1.0.0")
 
-# Configure logging
-logger = logging.getLogger(__name__)
+# Request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests and responses."""
+    start_time = time.time()
+    
+    # Log request
+    logger.info(f"→ {request.method} {request.url.path}")
+    logger.debug(f"  Headers: {dict(request.headers)}")
+    logger.debug(f"  Query params: {dict(request.query_params)}")
+    
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Log response
+        logger.info(f"← {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.3f}s")
+        
+        return response
+    except Exception as e:
+        process_time = time.time() - start_time
+        logger.error(f"← {request.method} {request.url.path} - ERROR after {process_time:.3f}s: {str(e)}")
+        raise
 
 # Add global exception handler to ensure CORS headers are sent even on errors
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle all unhandled exceptions and ensure CORS headers are sent."""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    logger.error(f"Unhandled exception in {request.method} {request.url.path}")
+    logger.error(f"Exception type: {type(exc).__name__}")
+    logger.error(f"Exception message: {str(exc)}", exc_info=True)
+    
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error"},
+        content={
+            "detail": "Internal server error",
+            "error": str(exc) if settings.log_level == "DEBUG" else "Internal server error"
+        },
         headers={
             "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
             "Access-Control-Allow-Credentials": "true",
@@ -32,6 +71,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # Configure CORS
+logger.info(f"Configuring CORS with origins: {settings.cors_origins_list}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
