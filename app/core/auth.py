@@ -1,4 +1,5 @@
 """Authentication utilities for JWT token handling and password hashing."""
+import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -23,18 +24,28 @@ def hash_password(password: str) -> str:
     """
     Hash a plain text password using bcrypt.
     
+    To work around bcrypt's 72-byte limitation, we pre-hash long passwords
+    with SHA256. This ensures security while avoiding the byte limit.
+    
     Args:
         password: Plain text password
         
     Returns:
         Hashed password string
     """
+    # Pre-hash with SHA256 if password is longer than 72 bytes
+    # This is a standard approach to work around bcrypt's limitation
+    if len(password.encode('utf-8')) > 72:
+        password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+    
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain text password against a hashed password.
+    
+    Handles the SHA256 pre-hashing for passwords longer than 72 bytes.
     
     Args:
         plain_password: Plain text password to verify
@@ -43,6 +54,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True if password matches, False otherwise
     """
+    # Pre-hash with SHA256 if password is longer than 72 bytes
+    if len(plain_password.encode('utf-8')) > 72:
+        plain_password = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+    
     return pwd_context.verify(plain_password, hashed_password)
 
 
