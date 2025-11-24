@@ -4,7 +4,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: ffbot
-      POSTGRES_PASSWORD: 561376d2e545a115d1449648e1b711ead66711eb
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ffbot}
       POSTGRES_DB: ffbot
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
