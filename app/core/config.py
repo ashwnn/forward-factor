@@ -14,9 +14,11 @@ class Settings(BaseSettings):
     
     # Database
     database_url: str
+    postgres_port: int = 5432
     
     # Redis
     redis_url: str
+    redis_port: int = 6379
     
     # Telegram
     telegram_bot_token: str
