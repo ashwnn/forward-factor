@@ -34,7 +34,7 @@ services:
   api:
     container_name: ffbot_api
     build: .
-    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
     volumes:
       - .:/app
     ports:
@@ -84,6 +84,7 @@ services:
 
   worker:
     build: .
+    container_name: ffbot_worker
     command: python -m app.workers.scan_worker
     volumes:
       - .:/app
@@ -105,6 +106,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${BACKEND_URL:-http://localhost:8000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
