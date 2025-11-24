@@ -1,16 +1,35 @@
 """FastAPI application for analytics and monitoring."""
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.config import settings
 from app.services import SignalService
 from typing import List, Optional
+import logging
 
 # Import routers
 from app.api.routes import auth, watchlist, settings as settings_router, signals
 
 app = FastAPI(title="Forward Factor Signal Bot API", version="1.0.0")
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Add global exception handler to ensure CORS headers are sent even on errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions and ensure CORS headers are sent."""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true",
+        }
+    )
 
 # Configure CORS
 app.add_middleware(
@@ -20,6 +39,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Include routers
 app.include_router(auth.router)
