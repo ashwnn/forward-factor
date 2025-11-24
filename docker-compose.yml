@@ -1,6 +1,6 @@
 services:
   postgres:
-    container_name: ffbot_postgres
+    container_name: ff-bot-postgres
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: ffbot
@@ -17,9 +17,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
   redis:
-    container_name: ffbot_redis
+    container_name: ff-bot-redis
     image: redis:7-alpine
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -30,9 +32,11 @@ services:
       retries: 5
     networks:
       - apps
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
   api:
-    container_name: ffbot_api
+    container_name: ff-bot-api
     build: .
     command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
     volumes:
@@ -48,9 +52,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+  
   bot:
-    container_name: ffbot
+    container_name: ff-bot
     build: .
     command: python -m app.bot.main
     volumes:
@@ -65,9 +71,12 @@ services:
     networks:
       - apps
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
   scheduler:
     build: .
+    container_name: ff-bot-scheduler
     command: python -m app.scheduler.main
     volumes:
       - .:/app
@@ -81,10 +90,12 @@ services:
     restart: unless-stopped
     networks:
       - apps
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
   worker:
     build: .
-    container_name: ffbot_worker
+    container_name: ff-bot-worker
     command: python -m app.workers.scan_worker
     volumes:
       - .:/app
@@ -102,7 +113,7 @@ services:
       - apps
 
   frontend:
-    container_name: ffbot_frontend
+    container_name: ff-bot-frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -117,6 +128,8 @@ services:
     restart: unless-stopped
     networks:
       - apps
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
 networks:
   apps:
