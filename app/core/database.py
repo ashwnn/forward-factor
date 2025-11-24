@@ -57,6 +57,11 @@ async def get_db() -> AsyncSession:
             logger.debug("Database session closed")
 
 
+def get_async_session():
+    """Context manager for getting database sessions outside of FastAPI requests."""
+    return AsyncSessionLocal()
+
+
 async def init_db():
     """Initialize database tables."""
     logger.info("Initializing database tables...")

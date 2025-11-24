@@ -26,6 +26,45 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Forward Factor Signal Bot API", version="1.0.0")
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize application on startup."""
+    logger.info("Application starting up...")
+    
+    # Create admin account if configured
+    if settings.admin_email and settings.admin_password:
+        logger.info(f"Checking for admin account: {settings.admin_email}")
+        from app.core.database import get_async_session
+        from app.services.auth_service import AuthService
+        from app.models.user import User
+        from sqlalchemy import select
+        
+        async with get_async_session() as db:
+            try:
+                # Check if admin already exists
+                result = await db.execute(select(User).where(User.email == settings.admin_email))
+                existing_user = result.scalar_one_or_none()
+                
+                if existing_user:
+                    logger.info(f"✓ Admin account already exists: {settings.admin_email}")
+                else:
+                    # Create admin account
+                    logger.info(f"Creating admin account: {settings.admin_email}")
+                    admin_user = await AuthService.register_user(
+                        settings.admin_email,
+                        settings.admin_password,
+                        db
+                    )
+                    logger.info(f"✓ Admin account created successfully: {admin_user.email} (ID: {admin_user.id})")
+            except Exception as e:
+                logger.error(f"✗ Failed to create admin account: {e}", exc_info=True)
+    else:
+        logger.info("No admin account configured (ADMIN_EMAIL/ADMIN_PASSWORD not set)")
+    
+    logger.info("Application startup complete")
+
+
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):

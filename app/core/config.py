@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     # CORS Configuration
     cors_origins: str = "http://localhost:3000"  # Comma-separated list of allowed origins
     
+    # Default Admin Account
+    admin_email: Optional[str] = None  # If set, creates admin account on startup
+    admin_password: Optional[str] = None
+    
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse CORS origins from comma-separated string to list."""
