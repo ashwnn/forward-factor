@@ -17,7 +17,7 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Get user
         user = await UserService.get_user_by_chat_id(db, chat_id)
         if not user:
-            await update.message.reply_text("Please use /start first to initialize your account.")
+            await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
             return
         
         # Get decision history

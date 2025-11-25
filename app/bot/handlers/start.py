@@ -3,6 +3,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from app.services import UserService
 from app.core.database import AsyncSessionLocal
+from app.core.config import settings
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -13,7 +14,21 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     
     async with AsyncSessionLocal() as db:
-        user = await UserService.get_or_create_user(db, chat_id)
+        # Check if user already exists
+        user = await UserService.get_user_by_chat_id(db, chat_id)
+        
+        if not user:
+            # Check for invite code
+            if not context.args or context.args[0] != settings.invite_code:
+                await update.message.reply_text(
+                    "🔒 Access Restricted\n\n"
+                    "Please provide a valid invite code to start using this bot.\n"
+                    "Usage: /start <invite_code>"
+                )
+                return
+            
+            # Create user if code is valid
+            user = await UserService.get_or_create_user(db, chat_id)
         
         welcome_message = f"""
 Welcome to Forward Factor Signal Bot!

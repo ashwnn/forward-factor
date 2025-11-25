@@ -13,11 +13,15 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     
     async with AsyncSessionLocal() as db:
-        user = await UserService.get_or_create_user(db, chat_id)
+        user = await UserService.get_user_by_chat_id(db, chat_id)
+        
+        if not user:
+            await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
+            return
+            
         settings = user.settings
         
         if not settings:
-            # Should not happen due to get_or_create_user
             await update.message.reply_text("Error retrieving settings.")
             return
         
@@ -116,7 +120,7 @@ async def set_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     async with AsyncSessionLocal() as db:
         user = await UserService.get_user_by_chat_id(db, chat_id)
         if not user:
-            await update.message.reply_text("Please use /start first.")
+            await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
             return
             
         await UserService.update_user_settings(db, user.id, **{db_key: value})

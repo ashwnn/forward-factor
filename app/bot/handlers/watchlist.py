@@ -23,8 +23,11 @@ async def add_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ticker = context.args[0].upper()
     
     async with AsyncSessionLocal() as db:
-        # Get or create user
-        user = await UserService.get_or_create_user(db, chat_id)
+        # Get user
+        user = await UserService.get_user_by_chat_id(db, chat_id)
+        if not user:
+            await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
+            return
         
         # Add subscription
         await SubscriptionService.add_subscription(db, user.id, ticker)
@@ -58,7 +61,7 @@ async def remove_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Get user
         user = await UserService.get_user_by_chat_id(db, chat_id)
         if not user:
-            await update.message.reply_text("Please use /start first to initialize your account.")
+            await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
             return
         
         # Remove subscription

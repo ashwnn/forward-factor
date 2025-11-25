@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     
     # Telegram
     telegram_bot_token: str
+    invite_code: str
     
     # API Keys
     polygon_api_key: str
