@@ -8,7 +8,7 @@ echo "==================================================================="
 # 1. Stop all running containers
 echo ""
 echo "🛑 Stopping containers..."
-docker-compose down --remove-orphans
+docker compose down --remove-orphans
 
 # 2. Clean Python Cache
 echo ""
@@ -27,15 +27,15 @@ fi
 # 4. Rebuild Containers (No Cache)
 echo ""
 echo "🏗️  Rebuilding containers (forcing no-cache)..."
-docker-compose build --no-cache
+docker compose build --no-cache
 
 # 5. Start Application
 echo ""
 echo "🚀 Starting application..."
-docker-compose up -d
+docker compose up -d
 
 echo ""
 echo "==================================================================="
 echo "✅ Clean start complete!"
 echo "==================================================================="
-echo "To follow logs, run: docker-compose logs -f"
+echo "To follow logs, run: docker compose logs -f"
