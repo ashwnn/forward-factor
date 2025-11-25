@@ -82,11 +82,23 @@ class Settings(BaseSettings):
         Pydantic Settings does NOT expand shell-style ${VARIABLE} references,
         so we manually replace them with the actual values after loading.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if '${POSTGRES_PASSWORD}' in self.database_url:
+            original_url = self.database_url
             self.database_url = self.database_url.replace(
                 '${POSTGRES_PASSWORD}',
                 self.postgres_password
             )
+            # Log expansion without exposing the password
+            logger.debug(
+                f"Expanded DATABASE_URL: password placeholder replaced "
+                f"(password length: {len(self.postgres_password)} chars)"
+            )
+        else:
+            logger.debug("DATABASE_URL: no password expansion needed")
+        
         return self
 
 
