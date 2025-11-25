@@ -71,7 +71,7 @@ async def get_settings(
     
     Requires authentication.
     """
-    settings = await UserService.get_user_settings(str(current_user.id), db)
+    settings = await UserService.get_user_settings(db, str(current_user.id))
     
     return {
         "ff_threshold": settings.ff_threshold,
@@ -102,7 +102,7 @@ async def update_settings(
     Only provided fields will be updated.
     Requires authentication.
     """
-    settings = await UserService.get_user_settings(str(current_user.id), db)
+    settings = await UserService.get_user_settings(db, str(current_user.id))
     
     # Update only provided fields
     if request.ff_threshold is not None:

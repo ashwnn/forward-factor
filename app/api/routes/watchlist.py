@@ -34,7 +34,7 @@ async def get_watchlist(
     
     Requires authentication.
     """
-    subscriptions = await SubscriptionService.get_user_subscriptions(str(current_user.id), db)
+    subscriptions = await SubscriptionService.get_user_subscriptions(db, str(current_user.id))
     
     return [
         {
@@ -68,9 +68,9 @@ async def add_ticker(
     
     # Add subscription
     subscription = await SubscriptionService.add_subscription(
+        db,
         str(current_user.id),
-        ticker,
-        db
+        ticker
     )
     
     return {
@@ -95,9 +95,9 @@ async def remove_ticker(
     ticker = ticker.upper().strip()
     
     await SubscriptionService.remove_subscription(
+        db,
         str(current_user.id),
-        ticker,
-        db
+        ticker
     )
     
     return {
