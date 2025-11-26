@@ -1,4 +1,3 @@
-```python
 """Callback query handlers for inline buttons."""
 import logging
 from telegram import Update
@@ -10,7 +9,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
-async def handle_signal_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle callback queries from signal action buttons.
     
@@ -65,11 +64,11 @@ async def handle_signal_decision(update: Update, context: ContextTypes.DEFAULT_T
             f"{action_emoji.get(action, '✅')} Decision recorded: {action}"
         )
     except Exception as e:
-        logger.error(f"Error in handle_signal_decision: {e}", exc_info=True)
+        logger.error(f"Error in button_callback: {e}", exc_info=True)
         try:
             await query.edit_message_text(
                 "❌ An error occurred processing your request. Please try again later."
             )
         except:
             pass  # Message might be too old to edit
-```
+
