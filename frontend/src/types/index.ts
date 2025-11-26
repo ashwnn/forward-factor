@@ -69,8 +69,10 @@ export interface Decision {
     signal_id: string;
     decision: string;
     decision_ts: string;
-    pnl?: number;
+    entry_price?: number;
     exit_price?: number;
+    pnl?: number;
+    notes?: string;
 }
 
 export interface HistoryEntry {

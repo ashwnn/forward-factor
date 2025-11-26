@@ -37,6 +37,10 @@ class SignalResponse(BaseModel):
 class DecisionRequest(BaseModel):
     """Request to record a signal decision."""
     decision: str  # "placed" or "ignored"
+    entry_price: Optional[float] = None
+    exit_price: Optional[float] = None
+    pnl: Optional[float] = None
+    notes: Optional[str] = None
 
 
 class DecisionResponse(BaseModel):
@@ -208,6 +212,14 @@ async def record_decision(
         # Update existing decision
         existing_decision.decision = request.decision
         existing_decision.decision_ts = datetime.utcnow()
+        if request.entry_price is not None:
+            existing_decision.entry_price = request.entry_price
+        if request.exit_price is not None:
+            existing_decision.exit_price = request.exit_price
+        if request.pnl is not None:
+            existing_decision.pnl = request.pnl
+        if request.notes is not None:
+            existing_decision.notes = request.notes
         await db.commit()
         await db.refresh(existing_decision)
         
@@ -215,7 +227,10 @@ async def record_decision(
             "id": str(existing_decision.id),
             "signal_id": str(existing_decision.signal_id),
             "decision": existing_decision.decision,
-            "decision_ts": existing_decision.decision_ts.isoformat()
+            "decision_ts": existing_decision.decision_ts.isoformat(),
+            "entry_price": existing_decision.entry_price,
+            "exit_price": existing_decision.exit_price,
+            "pnl": existing_decision.pnl
         }
     
     # Create new decision
@@ -223,7 +238,11 @@ async def record_decision(
         signal_id=signal_id,
         user_id=current_user.id,
         decision=request.decision,
-        decision_ts=datetime.utcnow()
+        decision_ts=datetime.utcnow(),
+        entry_price=request.entry_price,
+        exit_price=request.exit_price,
+        pnl=request.pnl,
+        notes=request.notes
     )
     
     db.add(decision)
@@ -234,5 +253,8 @@ async def record_decision(
         "id": str(decision.id),
         "signal_id": str(decision.signal_id),
         "decision": decision.decision,
-        "decision_ts": decision.decision_ts.isoformat()
+        "decision_ts": decision.decision_ts.isoformat(),
+        "entry_price": decision.entry_price,
+        "exit_price": decision.exit_price,
+        "pnl": decision.pnl
     }
