@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to reset the database when password changes
+# Script to reset the database
 # This will DELETE all existing data!
 
 echo "⚠️  WARNING: This will DELETE all database data!"
@@ -10,8 +10,8 @@ read
 echo "Stopping containers..."
 docker compose down
 
-echo "Removing old database volume..."
-rm -rf ./data/postgres
+echo "Removing SQLite database file..."
+rm -f ./data/ffbot.db
 
 echo "Removing old redis volume..."
 rm -rf ./data/redis
@@ -20,23 +20,14 @@ echo "Building docker images..."
 docker compose build --no-cache
 
 
-echo "Starting containers with new configuration..."
-docker compose up -d postgres redis
+echo "Starting containers..."
+docker compose up -d redis
 
-echo "Waiting for database to be ready..."
-sleep 10
+echo "Waiting for services to be ready..."
+sleep 5
 
 echo "Running database migrations..."
-docker compose exec api python -c "
-import asyncio
-from app.core.database import init_db
-
-async def main():
-    await init_db()
-    print('✓ Database initialized')
-
-asyncio.run(main())
-"
+docker compose run --rm migrate
 
 echo "Starting all services..."
 docker compose up -d
