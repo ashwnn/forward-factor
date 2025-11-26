@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 import asyncio
 import sys
+import os
 import re
 
 # Import all models to ensure they're registered with Base
@@ -18,12 +19,23 @@ config = context.config
 
 # Override sqlalchemy.url with our DATABASE_URL
 database_url = settings.database_url
+
+# Fix for SQLite relative paths in Docker/Alembic
+# If the path is relative (starts with sqlite+aiosqlite:///./), make it absolute
+# based on the current working directory.
+if "sqlite" in database_url and "///./" in database_url:
+    base_dir = os.getcwd()
+    # Replace /./ with /{base_dir}/
+    database_url = database_url.replace("///./", f"///{base_dir}/")
+    print(f"  Fixed SQLite URL: {database_url}", file=sys.stderr)
+
 config.set_main_option("sqlalchemy.url", database_url)
 
 # Debug logging
 print("\n" + "="*70, file=sys.stderr)
 print("ALEMBIC DEBUG INFO", file=sys.stderr)
 print("="*70, file=sys.stderr)
+print(f"Current Working Directory: {os.getcwd()}", file=sys.stderr)
 print(f"Settings DATABASE_URL: {database_url}", file=sys.stderr)
 
 # Parse and show details (hide password)
