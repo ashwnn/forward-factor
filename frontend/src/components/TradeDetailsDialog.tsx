@@ -124,13 +124,13 @@ export default function TradeDetailsDialog({ decision, onSave, onClose }: TradeD
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 bg-blue-700 text-white py-2 px-4 rounded-lg hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? 'Saving...' : 'Save'}
                     </button>
                     <button
                         onClick={onClose}
-                        className="flex-1 bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300"
+                        className="flex-1 bg-gray-700 text-white py-2 px-4 rounded-lg hover:bg-gray-800"
                     >
                         Cancel
                     </button>

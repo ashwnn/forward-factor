@@ -109,13 +109,13 @@ export default function SignalsPage() {
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => recordDecision(signal.id, 'placed')}
-                                        className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
+                                        className="flex-1 bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 font-medium"
                                     >
                                         Place Trade
                                     </button>
                                     <button
                                         onClick={() => recordDecision(signal.id, 'ignored')}
-                                        className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 font-medium"
+                                        className="flex-1 bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 font-medium"
                                     >
                                         Ignore
                                     </button>

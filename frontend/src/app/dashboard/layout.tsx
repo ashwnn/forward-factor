@@ -77,7 +77,7 @@ export default function DashboardLayout({
                             <span className="text-sm text-gray-700 mr-4">{user.email}</span>
                             <button
                                 onClick={logout}
-                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium"
+                                className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded text-sm font-medium"
                             >
                                 Logout
                             </button>

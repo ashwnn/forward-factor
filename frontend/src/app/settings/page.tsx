@@ -110,7 +110,7 @@ export default function SettingsPage() {
                         />
                         <button
                             type="submit"
-                            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                            className="px-6 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800"
                         >
                             Link
                         </button>
@@ -210,7 +210,7 @@ export default function SettingsPage() {
                     <button
                         onClick={saveSettings}
                         disabled={saving}
-                        className="mt-6 w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        className="mt-6 w-full bg-blue-700 text-white px-4 py-2 rounded-md hover:bg-blue-800 disabled:opacity-50"
                     >
                         {saving ? 'Saving...' : 'Save Settings'}
                     </button>
