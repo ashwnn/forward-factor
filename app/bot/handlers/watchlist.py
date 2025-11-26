@@ -107,7 +107,8 @@ async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             
             # Get subscriptions
-            tickers = await SubscriptionService.get_user_subscriptions(db, user.id)
+            subscriptions = await SubscriptionService.get_user_subscriptions(db, user.id)
+            tickers = [sub.ticker for sub in subscriptions]
             
             message = format_watchlist(tickers)
             await update.message.reply_text(message)
