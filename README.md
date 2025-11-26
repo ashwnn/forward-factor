@@ -105,6 +105,14 @@ docker-compose exec api alembic upgrade head
 docker-compose ps
 ```
 
+### Alternative: Start with Tests
+
+To run all unit tests before starting the application (recommended for development):
+
+```bash
+./scripts/start_w_test.sh
+```
+
 All services should show "Up" status:
 - postgres (port 5432)
 - redis (port 6379)
@@ -292,15 +300,25 @@ ff-telegram-bot/
 
 ### Running Tests
 
+### Running Tests
+
+We provide a convenience script to run tests and start the application if they pass:
+
 ```bash
-# Run all tests
-docker-compose exec worker pytest
+./scripts/start_w_test.sh
+```
+
+To run tests manually using Docker:
+
+```bash
+# Run all unit tests
+docker-compose run --rm worker pytest tests/unit/ -v
 
 # Run specific test file
-docker-compose exec worker pytest tests/test_signal_engine.py -v
+docker-compose run --rm worker pytest tests/unit/services/test_signal_engine.py -v
 
 # Run with coverage
-docker-compose exec worker pytest --cov=app tests/
+docker-compose run --rm worker pytest --cov=app tests/unit/
 ```
 
 ### Database Migrations
