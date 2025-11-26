@@ -7,6 +7,7 @@ import DashboardLayout from '../dashboard/layout';
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState<Settings | null>(null);
+    const [user, setUser] = useState<any>(null);
     const [telegramUsername, setTelegramUsername] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -15,6 +16,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         fetchSettings();
+        fetchUser();
     }, []);
 
     const fetchSettings = async () => {
@@ -25,6 +27,15 @@ export default function SettingsPage() {
             setError('Failed to load settings');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchUser = async () => {
+        try {
+            const response = await apiClient.get('/api/auth/me');
+            setUser(response.data);
+        } catch (err: any) {
+            console.error('Failed to fetch user info:', err);
         }
     };
 
@@ -56,8 +67,22 @@ export default function SettingsPage() {
             });
             setSuccess('Telegram account linked successfully!');
             setTelegramUsername('');
+            await fetchUser(); // Refresh user data
         } catch (err: any) {
             setError('Failed to link Telegram account');
+        }
+    };
+
+    const unlinkTelegram = async () => {
+        setError('');
+        setSuccess('');
+
+        try {
+            await apiClient.post('/api/auth/unlink-telegram');
+            setSuccess('Telegram account unlinked successfully!');
+            await fetchUser(); // Refresh user data
+        } catch (err: any) {
+            setError('Failed to unlink Telegram account');
         }
     };
 
@@ -97,24 +122,39 @@ export default function SettingsPage() {
                     </div>
                 )}
 
-                {/* Link Telegram */}
+                {/* Telegram Account Section */}
                 <div className="bg-white shadow rounded-lg p-6 mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Link Telegram Account</h2>
-                    <form onSubmit={linkTelegram} className="flex gap-4">
-                        <input
-                            type="text"
-                            value={telegramUsername}
-                            onChange={(e) => setTelegramUsername(e.target.value)}
-                            placeholder="Enter Telegram username (without @)"
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <button
-                            type="submit"
-                            className="px-6 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800"
-                        >
-                            Link
-                        </button>
-                    </form>
+                    <h2 className="text-xl font-semibold mb-4">Telegram Account</h2>
+                    {user?.telegram_username ? (
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 mb-1">Connected Account</p>
+                                <p className="text-lg font-medium text-gray-900">@{user.telegram_username}</p>
+                            </div>
+                            <button
+                                onClick={unlinkTelegram}
+                                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                            >
+                                Unlink
+                            </button>
+                        </div>
+                    ) : (
+                        <form onSubmit={linkTelegram} className="flex gap-4">
+                            <input
+                                type="text"
+                                value={telegramUsername}
+                                onChange={(e) => setTelegramUsername(e.target.value)}
+                                placeholder="Enter Telegram username (without @)"
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <button
+                                type="submit"
+                                className="px-6 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800"
+                            >
+                                Link
+                            </button>
+                        </form>
+                    )}
                 </div>
 
                 {/* Signal Settings */}
@@ -122,9 +162,12 @@ export default function SettingsPage() {
                     <h2 className="text-xl font-semibold mb-4">Signal Settings</h2>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-900 mb-1">
                                 Forward Factor Threshold
                             </label>
+                            <p className="text-xs text-gray-600 mb-2">
+                                Minimum FF value to trigger a signal. Use 1.5 for conservative signals, 1.0 for more aggressive signals. Example: 1.2
+                            </p>
                             <input
                                 type="number"
                                 step="0.01"
@@ -132,18 +175,21 @@ export default function SettingsPage() {
                                 onChange={(e) =>
                                     setSettings({ ...settings, ff_threshold: parseFloat(e.target.value) })
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-900 mb-1">
                                 Vol Point
                             </label>
+                            <p className="text-xs text-gray-600 mb-2">
+                                Which strike to use for volatility calculations. ATM = At-The-Money, 35d = 35 Delta options. Example: ATM
+                            </p>
                             <select
                                 value={settings.vol_point}
                                 onChange={(e) => setSettings({ ...settings, vol_point: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="ATM">ATM</option>
                                 <option value="35d_put">35 Delta Put</option>
@@ -153,56 +199,69 @@ export default function SettingsPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-900 mb-1">
                                     Min Open Interest
                                 </label>
+                                <p className="text-xs text-gray-600 mb-2">
+                                    Minimum open interest required for options to ensure liquidity. Example: 100
+                                </p>
                                 <input
                                     type="number"
                                     value={settings.min_open_interest}
                                     onChange={(e) =>
                                         setSettings({ ...settings, min_open_interest: parseInt(e.target.value) })
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-sm font-medium text-gray-900 mb-1">
                                     Min Volume
                                 </label>
+                                <p className="text-xs text-gray-600 mb-2">
+                                    Minimum daily options volume required to ensure active trading. Example: 50
+                                </p>
                                 <input
                                     type="number"
                                     value={settings.min_volume}
                                     onChange={(e) =>
                                         setSettings({ ...settings, min_volume: parseInt(e.target.value) })
                                     }
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-900 mb-1">
                                 Cooldown Minutes
                             </label>
+                            <p className="text-xs text-gray-600 mb-2">
+                                Minimum time (in minutes) between signals for the same ticker to avoid spam. Example: 60 (1 hour)
+                            </p>
                             <input
                                 type="number"
                                 value={settings.cooldown_minutes}
                                 onChange={(e) =>
                                     setSettings({ ...settings, cooldown_minutes: parseInt(e.target.value) })
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-900 mb-1">
                                 Timezone
                             </label>
+                            <p className="text-xs text-gray-600 mb-2">
+                                Your timezone for quiet hours and scheduling. Use IANA format. Example: America/New_York, Europe/London, Asia/Tokyo
+                            </p>
                             <input
                                 type="text"
                                 value={settings.timezone}
                                 onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="America/New_York"
                             />
                         </div>
                     </div>

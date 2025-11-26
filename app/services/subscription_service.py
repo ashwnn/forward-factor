@@ -89,9 +89,9 @@ class SubscriptionService:
         db: AsyncSession,
         user_id: str,
         active_only: bool = True
-    ) -> List[str]:
+    ) -> List[Subscription]:
         """
-        Get list of tickers user is subscribed to.
+        Get list of subscriptions for a user.
         
         Args:
             db: Database session
@@ -99,15 +99,15 @@ class SubscriptionService:
             active_only: Only return active subscriptions
             
         Returns:
-            List of ticker symbols
+            List of Subscription objects
         """
-        query = select(Subscription.ticker).where(Subscription.user_id == user_id)
+        query = select(Subscription).where(Subscription.user_id == user_id)
         
         if active_only:
             query = query.where(Subscription.active == True)
         
         result = await db.execute(query)
-        return [row[0] for row in result.all()]
+        return list(result.scalars().all())
     
     @staticmethod
     async def get_ticker_subscribers(

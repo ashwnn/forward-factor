@@ -162,6 +162,31 @@ async def link_telegram(
     }
 
 
+@router.post("/unlink-telegram", response_model=UserResponse)
+async def unlink_telegram(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Unlink Telegram account from the current user.
+    
+    Requires authentication.
+    """
+    user = await AuthService.unlink_telegram_username(
+        str(current_user.id),
+        db
+    )
+    
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "telegram_chat_id": user.telegram_chat_id,
+        "telegram_username": user.telegram_username,
+        "created_at": user.created_at.isoformat(),
+        "status": user.status
+    }
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     current_user: User = Depends(get_current_user)
