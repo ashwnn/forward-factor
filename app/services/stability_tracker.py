@@ -1,6 +1,6 @@
 """Stability tracker using Redis for signal debouncing."""
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from app.core.redis import get_redis
 
 
@@ -16,15 +16,18 @@ class StabilityTracker:
             self.redis = await get_redis()
         return self.redis
     
-    def _make_key(self, ticker: str, front_dte: int, back_dte: int) -> str:
-        """Create Redis key for a ticker/DTE pair."""
-        return f"stability:{ticker}:{front_dte}:{back_dte}"
+    def _make_key(self, ticker: str, front_expiry: date, back_expiry: date) -> str:
+        """Create Redis key for a ticker/expiry pair using expiry dates.
+        
+        This prevents stability being reset when DTE changes day-to-day.
+        """
+        return f"stability:{ticker}:{front_expiry}:{back_expiry}"
     
     async def check_stability(
         self,
         ticker: str,
-        front_dte: int,
-        back_dte: int,
+        front_expiry: date,
+        back_expiry: date,
         ff_value: float,
         required_scans: int = 2,
         cooldown_minutes: int = 120,
@@ -35,8 +38,8 @@ class StabilityTracker:
         
         Args:
             ticker: Ticker symbol
-            front_dte: Front DTE
-            back_dte: Back DTE
+            front_expiry: Front expiry date
+            back_expiry: Back expiry date
             ff_value: Current FF value
             required_scans: Number of consecutive scans required
             cooldown_minutes: Cooldown period between alerts
@@ -46,7 +49,7 @@ class StabilityTracker:
             (should_alert, state_dict) tuple
         """
         redis = await self._get_redis()
-        key = self._make_key(ticker, front_dte, back_dte)
+        key = self._make_key(ticker, front_expiry, back_expiry)
         
         # Get current state
         state = await redis.hgetall(key)
@@ -116,10 +119,10 @@ class StabilityTracker:
         
         return True, {"consecutive_count": consecutive_count, "reason": "stable"}
     
-    async def reset(self, ticker: str, front_dte: int, back_dte: int):
-        """Reset stability tracking for a ticker/DTE pair."""
+    async def reset(self, ticker: str, front_expiry: date, back_expiry: date):
+        """Reset stability tracking for a ticker/expiry pair."""
         redis = await self._get_redis()
-        key = self._make_key(ticker, front_dte, back_dte)
+        key = self._make_key(ticker, front_expiry, back_expiry)
         await redis.delete(key)
 
 

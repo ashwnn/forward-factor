@@ -1,9 +1,12 @@
 """History command handler."""
+import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from app.services import UserService, SignalService
 from app.core.database import AsyncSessionLocal
 from app.utils.formatting import format_history
+
+logger = logging.getLogger(__name__)
 
 
 async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -11,17 +14,23 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     Handle /history command.
     Shows user's recent signals and decisions.
     """
-    chat_id = str(update.effective_chat.id)
-    
-    async with AsyncSessionLocal() as db:
-        # Get user
-        user = await UserService.get_user_by_chat_id(db, chat_id)
-        if not user:
-            await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
-            return
+    try:
+        chat_id = str(update.effective_chat.id)
         
-        # Get decision history
-        decisions = await SignalService.get_user_decisions(db, user.id, limit=20)
-        
-        message = format_history(decisions)
-        await update.message.reply_text(message)
+        async with AsyncSessionLocal() as db:
+            # Get user
+            user = await UserService.get_user_by_chat_id(db, chat_id)
+            if not user:
+                await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
+                return
+            
+            # Get decision history
+            decisions = await SignalService.get_user_decisions(db, user.id, limit=20)
+            
+            message = format_history(decisions)
+            await update.message.reply_text(message)
+    except Exception as e:
+        logger.error(f"Error in history_command: {e}", exc_info=True)
+        await update.message.reply_text(
+            "❌ An error occurred processing your request. Please try again later."
+        )

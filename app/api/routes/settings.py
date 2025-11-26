@@ -1,5 +1,5 @@
 """User settings API routes."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Optional
@@ -108,6 +108,18 @@ async def update_settings(
     if request.ff_threshold is not None:
         settings.ff_threshold = request.ff_threshold
     if request.dte_pairs is not None:
+        # Validate DTE pairs (Fix #7)
+        for pair in request.dte_pairs:
+            if pair.get('front', 0) >= pair.get('back', 0):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Front DTE must be less than back DTE"
+                )
+            if pair.get('front', 0) < 0 or pair.get('back', 0) < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="DTE values must be positive"
+                )
         settings.dte_pairs = request.dte_pairs
     if request.vol_point is not None:
         settings.vol_point = request.vol_point

@@ -119,8 +119,12 @@ class NotificationRouter:
                     )
                     user_obj = result.scalar_one_or_none()
                     
-                    if user_obj:
+                    if user_obj and user_obj.telegram_chat_id:
                         await self.send_signal_to_user(signal, str(user_id), user_obj.telegram_chat_id)
+                    elif user_obj:
+                        logger.warning(f"User {user_id} has no telegram_chat_id, skipping notification")
+                    else:
+                        logger.warning(f"User {user_id} not found, skipping notification")
                         
         except Exception as e:
             logger.error(f"Error processing notification {signal_id}: {e}", exc_info=True)
@@ -136,7 +140,7 @@ class NotificationRouter:
                 result = await redis.brpop("notification_queue", timeout=5)
                 
                 if result:
-                    _, signal_id = result
+                    queue_name, signal_id = result
                     await self.process_notification(signal_id)
                 else:
                     await asyncio.sleep(1)

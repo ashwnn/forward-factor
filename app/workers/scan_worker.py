@@ -75,11 +75,11 @@ class ScanWorker:
                     
                     # Process each signal
                     for signal_data in signals:
-                        # Check stability
+                        # Check stability using expiry dates (not DTE)
                         should_alert, state = await stability_tracker.check_stability(
                             ticker=signal_data["ticker"],
-                            front_dte=signal_data["front_dte"],
-                            back_dte=signal_data["back_dte"],
+                            front_expiry=signal_data["front_expiry"],
+                            back_expiry=signal_data["back_expiry"],
                             ff_value=signal_data["ff_value"],
                             required_scans=user_settings_obj.stability_scans,
                             cooldown_minutes=user_settings_obj.cooldown_minutes
@@ -87,43 +87,59 @@ class ScanWorker:
                         
                         if not should_alert:
                             logger.info(f"Signal for {ticker} not stable yet: {state}")
-                            continue
-                        
-                        # Persist signal
-                        signal = await SignalService.create_signal(db, signal_data)
-                        
-                        if signal:
-                            logger.info(f"Created signal: {ticker} FF={signal_data['ff_value']:.2%}")
                             
-                            # Queue for notification
-                            await redis.lpush("notification_queue", str(signal.id))
+                        if should_alert:
+                            # Persist signal to database (transaction auto-committed by context manager)
+                            signal = await SignalService.create_signal(db, signal_data)
+                            
+                            if signal:
+                                # Signal was created (not a duplicate), queue for notification
+                                logger.info(f"Created signal {signal.id} for {ticker}")
+                                await redis.lpush("notification_queue", signal.id)
+                            else:
+                                # Signal was a duplicate, skip notification
+                                logger.debug(f"Skipped duplicate signal for {ticker}")
+                        else:
+                            logger.debug(f"Signal did not meet stability: {state}")
                 
                 # Update last scan time
                 await TickerService.update_last_scan(db, ticker)
                 
+            # Transaction is automatically committed when the async with block exits
+            logger.info(f"Completed scan for {ticker}")
+                
         except Exception as e:
             logger.error(f"Error scanning {ticker}: {e}", exc_info=True)
+    
+    async def cleanup(self):
+        """Cleanup resources."""
+        await self.provider.close()
+        if self.redis:
+            await self.redis.close()
     
     async def run(self):
         """Run worker loop, processing scan jobs from Redis queue."""
         logger.info("Scan worker started")
         redis = await self._get_redis()
         
-        while True:
-            try:
-                # Block and wait for scan job
-                result = await redis.brpop("scan_queue", timeout=5)
-                
-                if result:
-                    _, ticker = result
-                    await self.scan_ticker(ticker)
-                else:
-                    # No jobs, sleep briefly
-                    await asyncio.sleep(1)
+        try:
+            while True:
+                try:
+                    # Block and wait for scan job
+                    result = await redis.brpop("scan_queue", timeout=5)
                     
-            except Exception as e:
-                logger.error(f"Worker error: {e}", exc_info=True)
-                await asyncio.sleep(5)
+                    if result:
+                        queue_name, ticker = result
+                        await self.scan_ticker(ticker)
+                    else:
+                        # No jobs, sleep briefly
+                        await asyncio.sleep(1)
+                        
+                except Exception as e:
+                    logger.error(f"Worker error: {e}", exc_info=True)
+                    await asyncio.sleep(5)
+        finally:
+            await self.cleanup()
 
 
 async def main():
