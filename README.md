@@ -179,6 +179,47 @@ Each notification includes two buttons:
 - Place Trade: Records that you executed the trade
 - Ignore: Records that you skipped the signal
 
+### Trade Reminders
+
+When you click **"Place Trade"**, the bot automatically schedules two critical reminders:
+
+1. **1 Day Before Front Expiry** (9:30 AM ET)
+   - ⚠️ ACTION REQUIRED notification
+   - Time to plan position management
+   - Review trade performance
+
+2. **Market Open on Expiry Day** (9:30 AM ET)
+   - ⚠️ ACTION REQUIRED notification
+   - Last chance to close or roll position
+   - Avoid assignment risk
+
+**How It Works:**
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Bot
+    participant Redis
+    participant Worker
+    
+    User->>Bot: Clicks "Place Trade"
+    Bot->>Redis: Schedule 2 reminders
+    Note over Redis: 1 day before & expiry day
+    
+    loop Every minute
+        Worker->>Redis: Check for due reminders
+        alt Reminder is due
+            Worker->>User: ⚠️ ACTION REQUIRED
+            Worker->>Redis: Remove sent reminder
+        end
+    end
+```
+
+Reminders include:
+- Original signal details (FF, IVs, underlying price)
+- Expiry dates and DTEs
+- Clear action guidance
+
 ### API Endpoints
 
 The FastAPI backend provides monitoring endpoints:

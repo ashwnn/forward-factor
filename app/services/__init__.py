@@ -5,6 +5,7 @@ from app.services.ticker_service import TickerService
 from app.services.signal_service import SignalService
 from app.services.stability_tracker import stability_tracker
 from app.services.auth_service import AuthService
+from app.services.reminder_service import ReminderService
 
 __all__ = [
     "UserService",
@@ -12,5 +13,6 @@ __all__ = [
     "TickerService",
     "SignalService",
     "stability_tracker",
-    "AuthService"
+    "AuthService",
+    "ReminderService"
 ]

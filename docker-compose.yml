@@ -103,6 +103,27 @@ services:
     networks:
       - apps
 
+  reminder-worker:
+    build: .
+    container_name: ff-bot-reminder-worker
+    command: python -m app.workers.reminder_worker
+    volumes:
+      - .:/app
+      - ff-bot-data:/app/data
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - apps
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+
   frontend:
     container_name: ff-bot-frontend
     build:

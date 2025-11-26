@@ -23,12 +23,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Parse callback data
         try:
             parts = query.data.split(":")
-            if len(parts) != 3 or parts[0] != "signal":
+            if len(parts) < 2:
                 await query.edit_message_text("Invalid callback data")
                 return
-                
+            
+            action = parts[0]  # "place" or "ignore"
             signal_id = parts[1]
-            action = parts[2]
+            # user_id is in parts[2] if present (from notification)
+            
+            # Map action names
+            action_map = {
+                "place": "placed",
+                "ignore": "ignored"
+            }
+            action = action_map.get(action, action)
+            
         except Exception:
             await query.edit_message_text("❌ Error parsing signal data")
             return
@@ -52,6 +61,24 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "via": "telegram_callback"
                 }
             )
+            
+            # If user placed the trade, schedule reminders
+            if action == "placed":
+                from app.services.reminder_service import ReminderService
+                from app.models import Signal
+                from sqlalchemy import select
+                
+                # Get signal details for reminder scheduling
+                result = await db.execute(
+                    select(Signal).where(Signal.id == signal_id)
+                )
+                signal = result.scalar_one_or_none()
+                
+                if signal:
+                    await ReminderService.schedule_trade_reminders(
+                        signal=signal,
+                        user_id=user.id
+                    )
         
         # Update message
         action_emoji = {

@@ -59,6 +59,67 @@ Close before front expiry.
     return message
 
 
+
+def format_reminder_message(signal_dict: dict, reminder_type: str) -> str:
+    """
+    Format a trade reminder message.
+    
+    Args:
+        signal_dict: Dictionary with signal data
+        reminder_type: Type of reminder ("one_day_before" or "expiry_day")
+        
+    Returns:
+        Formatted reminder message
+    """
+    ticker = signal_dict.get('ticker', 'UNKNOWN')
+    front_expiry = signal_dict.get('front_expiry', 'Unknown')
+    back_expiry = signal_dict.get('back_expiry', 'Unknown')
+    back_dte = signal_dict.get('back_dte', 0)
+    ff_value = signal_dict.get('ff_value', 0)
+    front_iv = signal_dict.get('front_iv', 0)
+    back_iv = signal_dict.get('back_iv', 0)
+    underlying_price = signal_dict.get('underlying_price', None)
+    
+    price_str = f"${underlying_price:.2f}" if underlying_price else "N/A"
+    
+    if reminder_type == "one_day_before":
+        return f"""⚠️ **ACTION REQUIRED** ⚠️
+
+📅 **Front Leg Expiring Tomorrow**
+
+{ticker} Calendar Spread:
+• Front: {front_expiry} (expires tomorrow)
+• Back: {back_expiry} ({back_dte} DTE)
+
+🔔 **Action Needed**: Consider closing or rolling your position before front expiration.
+
+Original Signal Details:
+• Forward Factor: {ff_value:.2%}
+• Front IV: {front_iv:.2%}
+• Back IV: {back_iv:.2%}
+• Underlying: {price_str}
+"""
+    
+    elif reminder_type == "expiry_day":
+        return f"""⚠️ **ACTION REQUIRED** ⚠️
+
+📅 **Front Leg Expires TODAY**
+
+{ticker} Calendar Spread:
+• Front: {front_expiry} (**EXPIRES TODAY**)
+• Back: {back_expiry} ({back_dte} DTE)
+
+🔔 **Immediate Action Needed**: Close or roll your position today before market close.
+
+Original Signal Details:
+• Forward Factor: {ff_value:.2%}
+• Front IV: {front_iv:.2%}
+• Back IV: {back_iv:.2%}
+• Underlying: {price_str}
+"""
+    
+    return f"Reminder for {ticker} trade"
+
 def format_watchlist(tickers: list) -> str:
     """
     Format watchlist for display.
