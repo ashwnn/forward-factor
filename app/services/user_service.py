@@ -10,13 +10,14 @@ class UserService:
     """Service for user management."""
     
     @staticmethod
-    async def get_or_create_user(db: AsyncSession, telegram_chat_id: str) -> User:
+    async def get_or_create_user(db: AsyncSession, telegram_chat_id: str, telegram_username: Optional[str] = None) -> User:
         """
         Get existing user or create new one.
         
         Args:
             db: Database session
             telegram_chat_id: Telegram chat ID
+            telegram_username: Optional Telegram username (without @)
             
         Returns:
             User object
@@ -28,10 +29,19 @@ class UserService:
         user = result.scalar_one_or_none()
         
         if user:
+            # Update telegram_username if provided and different
+            if telegram_username and user.telegram_username != telegram_username:
+                user.telegram_username = telegram_username
+                await db.commit()
+                await db.refresh(user)
             return user
         
         # Create new user with default settings
-        user = User(telegram_chat_id=telegram_chat_id, status="active")
+        user = User(
+            telegram_chat_id=telegram_chat_id,
+            telegram_username=telegram_username,
+            status="active"
+        )
         db.add(user)
         await db.flush()
         

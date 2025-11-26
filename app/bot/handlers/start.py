@@ -16,6 +16,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     try:
         chat_id = str(update.effective_chat.id)
+        telegram_username = update.effective_user.username  # Get username from Telegram
         
         async with AsyncSessionLocal() as db:
             # Check if user already exists
@@ -32,7 +33,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
                 
                 # Create user if code is valid
-                user = await UserService.get_or_create_user(db, chat_id)
+                user = await UserService.get_or_create_user(db, chat_id, telegram_username)
             
             welcome_message = f"""
 Welcome to Forward Factor Signal Bot!
