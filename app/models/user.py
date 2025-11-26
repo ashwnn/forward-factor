@@ -1,6 +1,6 @@
 """User model and settings."""
 from sqlalchemy import Column, String, DateTime, Float, Integer, Boolean, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
+
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -12,7 +12,7 @@ class User(Base):
     
     __tablename__ = "users"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     telegram_chat_id = Column(String, unique=True, nullable=True, index=True)
     email = Column(String, unique=True, nullable=True, index=True)
     password_hash = Column(String, nullable=True)
@@ -31,7 +31,7 @@ class UserSettings(Base):
     
     __tablename__ = "user_settings"
     
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     ff_threshold = Column(Float, default=0.20, nullable=False)
     dte_pairs = Column(JSON, default=lambda: [
         {"front": 30, "back": 60, "front_tol": 5, "back_tol": 10},

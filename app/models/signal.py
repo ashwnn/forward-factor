@@ -1,6 +1,6 @@
 """Signal model for storing computed Forward Factor signals."""
 from sqlalchemy import Column, String, DateTime, Integer, Float, JSON, Date
-from sqlalchemy.dialects.postgresql import UUID
+
 from datetime import datetime
 import uuid
 from app.core.database import Base
@@ -11,7 +11,7 @@ class Signal(Base):
     
     __tablename__ = "signals"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     ticker = Column(String, nullable=False, index=True)
     as_of_ts = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     front_expiry = Column(Date, nullable=False)
@@ -37,7 +37,7 @@ class OptionChainSnapshot(Base):
     
     __tablename__ = "option_chain_snapshots"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     ticker = Column(String, nullable=False, index=True)
     as_of_ts = Column(DateTime, default=datetime.utcnow, nullable=False)
     provider = Column(String, nullable=False)

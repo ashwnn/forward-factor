@@ -1,25 +1,4 @@
 services:
-  postgres:
-    container_name: ff-bot-postgres
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: ffbot
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ffbot}
-      POSTGRES_DB: ffbot
-    volumes:
-      - ./data/postgres:/var/lib/postgresql/data
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    networks:
-      - apps
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ffbot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
-
   redis:
     container_name: ff-bot-redis
     image: redis:7-alpine
@@ -45,11 +24,10 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
     networks:
       - apps
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     labels:
@@ -67,11 +45,10 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
     networks:
       - apps
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       migrate:
@@ -89,9 +66,8 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       migrate:
@@ -112,9 +88,8 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       migrate:
@@ -134,9 +109,8 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
       migrate:

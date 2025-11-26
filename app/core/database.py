@@ -15,12 +15,19 @@ def mask_db_url(url: str) -> str:
 logger.info(f"Connecting to database: {mask_db_url(settings.database_url)}")
 
 # Create async engine
+engine_args = {
+    "echo": settings.log_level == "DEBUG",
+    "pool_pre_ping": True,
+}
+
+if "sqlite" not in settings.database_url:
+    engine_args["pool_size"] = 10
+    engine_args["max_overflow"] = 20
+
+# Create async engine
 engine = create_async_engine(
     settings.database_url,
-    echo=settings.log_level == "DEBUG",
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20
+    **engine_args
 )
 
 logger.info(f"Database engine created with pool_size=10, max_overflow=20")

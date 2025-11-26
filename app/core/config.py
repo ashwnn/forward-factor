@@ -10,13 +10,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        case_sensitive=False
+        case_sensitive=False,
+        extra="ignore"
     )
     
     # Database
-    database_url: str
-    postgres_password: str  # Used by docker-compose.yml for PostgreSQL initialization
-    postgres_port: int = 5432
+    database_url: str = "sqlite+aiosqlite:///./data/ffbot.db"
     
     # Redis
     redis_url: str
@@ -76,30 +75,8 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
     
     @model_validator(mode='after')
-    def expand_database_url(self) -> 'Settings':
-        """
-        Expand ${POSTGRES_PASSWORD} in database_url if present.
-        
-        Pydantic Settings does NOT expand shell-style ${VARIABLE} references,
-        so we manually replace them with the actual values after loading.
-        """
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        if '${POSTGRES_PASSWORD}' in self.database_url:
-            original_url = self.database_url
-            self.database_url = self.database_url.replace(
-                '${POSTGRES_PASSWORD}',
-                self.postgres_password
-            )
-            # Log expansion without exposing the password
-            logger.debug(
-                f"Expanded DATABASE_URL: password placeholder replaced "
-                f"(password length: {len(self.postgres_password)} chars)"
-            )
-        else:
-            logger.debug("DATABASE_URL: no password expansion needed")
-        
+    def validate_config(self) -> 'Settings':
+        """Validate configuration."""
         return self
 
 

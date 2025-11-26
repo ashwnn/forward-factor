@@ -27,6 +27,7 @@ print("="*70, file=sys.stderr)
 print(f"Settings DATABASE_URL: {database_url}", file=sys.stderr)
 
 # Parse and show details (hide password)
+# Parse and show details (hide password)
 if match := re.match(r'postgresql\+asyncpg://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', database_url):
     user, password, host, port, db = match.groups()
     print(f"  Parsed User: {user}", file=sys.stderr)
@@ -34,6 +35,8 @@ if match := re.match(r'postgresql\+asyncpg://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)'
     print(f"  Parsed Host: {host}", file=sys.stderr)
     print(f"  Parsed Port: {port}", file=sys.stderr)
     print(f"  Parsed Database: {db}", file=sys.stderr)
+elif database_url.startswith("sqlite"):
+    print(f"  Using SQLite Database: {database_url}", file=sys.stderr)
 print("="*70 + "\n", file=sys.stderr)
 
 # Interpret the config file for Python logging
@@ -52,6 +55,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -59,7 +63,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection, 
+        target_metadata=target_metadata,
+        render_as_batch=True
+    )
 
     with context.begin_transaction():
         context.run_migrations()
