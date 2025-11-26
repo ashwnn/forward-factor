@@ -45,6 +45,8 @@ class DecisionResponse(BaseModel):
     signal_id: str
     decision: str
     decision_ts: str
+    pnl: Optional[float] = None
+    exit_price: Optional[float] = None
 
 
 class HistoryResponse(BaseModel):
@@ -153,7 +155,9 @@ async def get_history(
                 "id": str(decision.id),
                 "signal_id": str(decision.signal_id),
                 "decision": decision.decision,
-                "decision_ts": decision.decision_ts.isoformat()
+                "decision_ts": decision.decision_ts.isoformat(),
+                "pnl": decision.pnl,
+                "exit_price": decision.exit_price
             }
         })
     

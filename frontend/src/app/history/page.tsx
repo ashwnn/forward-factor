@@ -65,8 +65,8 @@ export default function HistoryPage() {
                                         {entry.decision && (
                                             <span
                                                 className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${entry.decision.decision === 'placed'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-gray-100 text-gray-800'
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-gray-100 text-gray-800'
                                                     }`}
                                             >
                                                 {entry.decision.decision.toUpperCase()}
@@ -75,7 +75,7 @@ export default function HistoryPage() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                                     <div>
                                         <p className="text-sm text-gray-500">Front IV</p>
                                         <p className="font-semibold">{(entry.signal.front_iv * 100).toFixed(2)}%</p>
@@ -93,6 +93,23 @@ export default function HistoryPage() {
                                         <p className="font-semibold">{entry.signal.back_dte}</p>
                                     </div>
                                 </div>
+
+                                {entry.decision?.pnl !== undefined && entry.decision.pnl !== null && (
+                                    <div className="border-t pt-4 mt-4">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="text-sm text-gray-500">Exit Price</p>
+                                                <p className="font-semibold">${entry.decision.exit_price?.toFixed(2) || '-'}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm text-gray-500">PnL</p>
+                                                <p className={`font-bold text-lg ${entry.decision.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {entry.decision.pnl >= 0 ? '+' : ''}{entry.decision.pnl.toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
