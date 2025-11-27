@@ -14,6 +14,26 @@ services:
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
 
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: ff-bot-timescaledb
+    environment:
+      - POSTGRES_USER=${DB_USER:-ffbot}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME:-ffbot}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ffbot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - apps
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
 
   api:
     container_name: ff-bot-api
@@ -28,11 +48,13 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
+      - DATABASE_URL=${DATABASE_URL}
     networks:
       - apps
     depends_on:
       redis:
+        condition: service_healthy
+      timescaledb:
         condition: service_healthy
 
     labels:
@@ -49,9 +71,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
+        condition: service_healthy
+      timescaledb:
         condition: service_healthy
 
     networks:
@@ -71,9 +95,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
+        condition: service_healthy
+      timescaledb:
         condition: service_healthy
 
     restart: unless-stopped
@@ -92,9 +118,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
+        condition: service_healthy
+      timescaledb:
         condition: service_healthy
 
     restart: unless-stopped
@@ -114,9 +142,11 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=sqlite+aiosqlite:///./data/ffbot.db
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       redis:
+        condition: service_healthy
+      timescaledb:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -160,3 +190,4 @@ networks:
 
 volumes:
   ff-bot-data:
+  timescale-data:

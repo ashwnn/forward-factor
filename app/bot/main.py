@@ -57,7 +57,11 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main():
     """Start the Telegram bot."""
+    logger.info("="*60)
     logger.info("Starting Telegram bot...")
+    logger.info(f"Log level: {settings.log_level}")
+    logger.debug(f"Bot token configured: {bool(settings.telegram_bot_token)}")
+    logger.info("="*60)
     
     # Create application
     application = Application.builder().token(settings.telegram_bot_token).build()
@@ -79,7 +83,10 @@ def main():
     application.add_handler(CallbackQueryHandler(button_callback))
     
     # Start bot
-    logger.info("Bot started successfully")
+    logger.info("All handlers registered successfully")
+    logger.info("="*60)
+    logger.info("Bot started successfully - polling for updates")
+    logger.info("="*60)
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 

@@ -19,7 +19,14 @@ class Settings(BaseSettings):
     )
     
     # Database
-    database_url: str = "sqlite+aiosqlite:///./data/ffbot.db"
+    database_url: str = "postgresql+asyncpg://ffbot:password@timescaledb:5432/ffbot"
+    
+    # Optional Database Components (used to construct DATABASE_URL if needed)
+    db_user: Optional[str] = None
+    db_password: Optional[str] = None
+    db_name: Optional[str] = None
+    db_host: Optional[str] = None
+    db_port: Optional[int] = None
     
     # Redis (redis_url should contain full connection string including port)
     redis_url: str

@@ -8,7 +8,12 @@ from app.core.database import AsyncSessionLocal
 from app.core.redis import get_redis
 from app.services import TickerService
 
-logging.basicConfig(level=logging.INFO)
+from app.core.config import settings
+
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -16,13 +21,18 @@ class ScanScheduler:
     """Scheduler for tiered ticker scanning."""
     
     def __init__(self):
+        logger.info("Initializing ScanScheduler...")
+        logger.debug("Creating AsyncIOScheduler instance")
         self.scheduler = AsyncIOScheduler()
         self.redis = None
+        logger.info("ScanScheduler initialized")
     
     async def _get_redis(self):
         """Get Redis connection."""
         if self.redis is None:
+            logger.debug("Connecting to Redis...")
             self.redis = await get_redis()
+            logger.info("Redis connection established")
         return self.redis
     
     async def enqueue_tier_scans(self, tier: str):
@@ -39,6 +49,8 @@ class ScanScheduler:
                 if not tickers:
                     logger.info(f"No tickers in {tier} tier")
                     return
+                
+                logger.debug(f"Found {len(tickers)} tickers in {tier} tier")
                 
                 redis = await self._get_redis()
                 
@@ -74,7 +86,13 @@ class ScanScheduler:
     
     def start(self):
         """Start the scheduler with tiered jobs."""
+        logger.info("="*60)
         logger.info("Starting scan scheduler...")
+        logger.info(f"Log level: {settings.log_level}")
+        logger.info(f"High tier cadence: every {settings.scan_cadence_high} minutes")
+        logger.info(f"Medium tier cadence: every {settings.scan_cadence_medium} minutes")
+        logger.info(f"Low tier cadence: every {settings.scan_cadence_low} minutes")
+        logger.info("="*60)
         
         # High tier: every N minutes (from config)
         self.scheduler.add_job(
@@ -109,7 +127,10 @@ class ScanScheduler:
         )
         
         self.scheduler.start()
+        logger.info("All scheduled jobs registered successfully")
+        logger.info("="*60)
         logger.info("Scheduler started successfully")
+        logger.info("="*60)
     
     async def run(self):
         """Run scheduler indefinitely."""

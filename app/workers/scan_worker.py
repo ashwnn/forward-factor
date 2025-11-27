@@ -9,7 +9,12 @@ from app.services import TickerService, SignalService, UserService, Subscription
 from app.services.signal_engine import compute_signals
 from datetime import datetime, timezone
 
-logging.basicConfig(level=logging.INFO)
+from app.core.config import settings
+
+logging.basicConfig(
+    level=getattr(logging, settings.log_level),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -17,13 +22,18 @@ class ScanWorker:
     """Worker for scanning tickers and computing signals."""
     
     def __init__(self):
+        logger.info("Initializing ScanWorker...")
+        logger.debug("Creating Polygon provider instance")
         self.provider = PolygonProvider()
         self.redis = None
+        logger.info("ScanWorker initialized")
     
     async def _get_redis(self):
         """Get Redis connection."""
         if self.redis is None:
+            logger.debug("Connecting to Redis...")
             self.redis = await get_redis()
+            logger.info("Redis connection established")
         return self.redis
     
     async def scan_ticker(self, ticker: str, is_discovery: bool = False):
@@ -47,6 +57,7 @@ class ScanWorker:
             
             # Get all subscribers for this ticker
             async with AsyncSessionLocal() as db:
+                logger.debug(f"Fetching subscribers for {ticker}")
                 subscriber_ids = await SubscriptionService.get_ticker_subscribers(db, ticker)
                 
                 # For discovery mode, also get users with discovery_mode enabled
@@ -60,6 +71,8 @@ class ScanWorker:
                 if not all_user_ids:
                     logger.info(f"No subscribers or discovery users for {ticker}, skipping")
                     return
+                
+                logger.debug(f"Processing signals for {len(all_user_ids)} users")
                 
                 # For each user, compute signals with their settings
                 for user_id in all_user_ids:
@@ -134,7 +147,11 @@ class ScanWorker:
     
     async def run(self):
         """Run worker loop, processing scan jobs from Redis queues."""
+        logger.info("="*60)
         logger.info("Scan worker started")
+        logger.info(f"Log level: {settings.log_level}")
+        logger.debug(f"Worker configuration loaded from settings")
+        logger.info("="*60)
         redis = await self._get_redis()
         
         try:
