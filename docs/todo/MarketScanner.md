@@ -73,7 +73,23 @@ async def scan_ticker(self, ticker: str, is_discovery: bool = False):
 #### `app/models/user.py`
 Add `discovery_mode` column.
 
-### 3.4. Testing Strategy
+### 3.4. Frontend Changes
+
+#### User Settings Page
+- Add a toggle or checkbox for enabling/disabling Discovery Mode.
+- Update the user profile API to include `discovery_mode` field.
+- Ensure the auth context reflects the updated user data.
+
+#### Signals Display
+- Modify the signals page or dashboard to distinguish signals from Discovery Mode (e.g., label them as "Discovery" or use a different icon).
+- Allow users to filter or view discovery signals separately.
+- Potentially add a new section or page for discovery signals if volume is high.
+
+#### Types and API Client
+- Update `types/index.ts` to include `discovery_mode` in the User type.
+- Update `lib/api-client.ts` to handle fetching and updating discovery mode.
+
+### 3.5. Testing Strategy
 - **Mocking Polygon**: Essential. We cannot rely on live API calls for "top 100" in tests.
     - Mock `get_grouped_daily_aggs` to return a controlled list of tickers with fake volumes.
 - **End-to-End Flow**:
@@ -84,9 +100,10 @@ Add `discovery_mode` column.
     - Scanning 100 tickers might take time. We need to ensure we respect Polygon's rate limits (5 calls/min for free, unlimited for paid). Assuming paid since this is a "Golden Goose" feature.
     - Ensure `compute_signals` is efficient enough.
 
-## 4. Next Steps
+## 5. Next Steps
 1.  Implement `get_top_liquid_tickers` in `PolygonProvider`.
 2.  Create a script or scheduler task to populate `discovery_queue`.
 3.  Update `ScanWorker` to process `discovery_queue`.
 4.  Update `User` model and `UserService`.
 5.  Add tests.
+6.  Update frontend components for Discovery Mode settings and signal display.
