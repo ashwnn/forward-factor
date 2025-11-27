@@ -11,7 +11,7 @@ docker compose down --remove-orphans
 
 echo ""
 echo "🏗️  Building and starting containers..."
-docker compose up --build -d
+docker compose up --build -d && docker compose exec api alembic upgrade head
 
 echo ""
 echo "==================================================================="

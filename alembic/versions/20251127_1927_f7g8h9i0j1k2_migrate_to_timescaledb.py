@@ -67,13 +67,9 @@ def upgrade() -> None:
         ALTER TABLE signals ADD CONSTRAINT signals_pkey PRIMARY KEY (id, as_of_ts);
     """)
     
-    # Recreate the foreign key constraint
-    logger.debug("Recreating foreign key constraint signal_user_decisions_signal_id_fkey")
-    op.execute("""
-        ALTER TABLE signal_user_decisions 
-        ADD CONSTRAINT signal_user_decisions_signal_id_fkey 
-        FOREIGN KEY (signal_id) REFERENCES signals(id) ON DELETE CASCADE;
-    """)
+    # Note: We don't recreate the foreign key here because signal_user_decisions
+    # doesn't have the signal_as_of_ts column yet. The next migration
+    # (g8h9i0j1k2l3) will add that column and create the composite foreign key.
     
     logger.info("✓ 'signals' table prepared with composite primary key (id, as_of_ts)")
     
@@ -236,7 +232,10 @@ def downgrade() -> None:
     
     # Revert signals table
     logger.debug("Reverting 'signals' primary key to single column (id)")
-    # Drop foreign key first
+    # Drop any foreign key constraints (handles both old single-column and new composite)
+    op.execute("""
+        ALTER TABLE signal_user_decisions DROP CONSTRAINT IF EXISTS signal_user_decisions_signal_composite_fkey;
+    """)
     op.execute("""
         ALTER TABLE signal_user_decisions DROP CONSTRAINT IF EXISTS signal_user_decisions_signal_id_fkey;
     """)
@@ -248,11 +247,21 @@ def downgrade() -> None:
     op.execute("""
         ALTER TABLE signals ADD CONSTRAINT signals_pkey PRIMARY KEY (id);
     """)
-    # Recreate foreign key
+    # Recreate single-column foreign key (only if signal_as_of_ts doesn't exist)
+    # Note: If migration g8h9i0j1k2l3 has run, we can't recreate the FK until it's reverted
     op.execute("""
-        ALTER TABLE signal_user_decisions 
-        ADD CONSTRAINT signal_user_decisions_signal_id_fkey 
-        FOREIGN KEY (signal_id) REFERENCES signals(id) ON DELETE CASCADE;
+        DO $$
+        BEGIN
+            -- Only add FK if the column signal_as_of_ts doesn't exist (migration g8h9i0j1k2l3 not run)
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='signal_user_decisions' AND column_name='signal_as_of_ts'
+            ) THEN
+                ALTER TABLE signal_user_decisions 
+                ADD CONSTRAINT signal_user_decisions_signal_id_fkey 
+                FOREIGN KEY (signal_id) REFERENCES signals(id) ON DELETE CASCADE;
+            END IF;
+        END $$;
     """)
     
     # Revert option_chain_snapshots table
