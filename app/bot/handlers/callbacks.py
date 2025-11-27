@@ -50,10 +50,24 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("❌ User not found")
                 return
             
-            # Record decision
+            # Get signal first to obtain as_of_ts for composite foreign key
+            from app.models import Signal
+            from sqlalchemy import select
+            
+            result = await db.execute(
+                select(Signal).where(Signal.id == signal_id)
+            )
+            signal = result.scalar_one_or_none()
+            
+            if not signal:
+                await query.edit_message_text("❌ Signal not found")
+                return
+            
+            # Record decision with composite foreign key
             await SignalService.record_decision(
                 db,
                 signal_id=signal_id,
+                signal_as_of_ts=signal.as_of_ts,
                 user_id=user.id,
                 decision=action,
                 metadata={
@@ -65,20 +79,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # If user placed the trade, schedule reminders
             if action == "placed":
                 from app.services.reminder_service import ReminderService
-                from app.models import Signal
-                from sqlalchemy import select
                 
-                # Get signal details for reminder scheduling
-                result = await db.execute(
-                    select(Signal).where(Signal.id == signal_id)
+                await ReminderService.schedule_trade_reminders(
+                    signal=signal,
+                    user_id=user.id
                 )
-                signal = result.scalar_one_or_none()
-                
-                if signal:
-                    await ReminderService.schedule_trade_reminders(
-                        signal=signal,
-                        user_id=user.id
-                    )
         
         # Update message
         action_emoji = {

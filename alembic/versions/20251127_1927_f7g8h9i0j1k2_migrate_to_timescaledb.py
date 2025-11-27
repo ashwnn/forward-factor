@@ -48,14 +48,33 @@ def upgrade() -> None:
     
     # Step 2: Prepare 'signals' table for hypertable conversion
     logger.info("Step 2/7: Preparing 'signals' table for hypertable conversion...")
+    
+    # First, drop the foreign key constraint from signal_user_decisions that depends on signals.id
+    logger.debug("Dropping foreign key constraint signal_user_decisions_signal_id_fkey")
+    op.execute("""
+        ALTER TABLE signal_user_decisions DROP CONSTRAINT IF EXISTS signal_user_decisions_signal_id_fkey;
+    """)
+    
+    # Now we can drop the old primary key constraint
     logger.debug("Dropping existing primary key constraint on 'signals'")
     op.execute("""
         ALTER TABLE signals DROP CONSTRAINT IF EXISTS signals_pkey;
     """)
+    
+    # Create the new composite primary key
     logger.debug("Creating composite primary key (id, as_of_ts) on 'signals'")
     op.execute("""
         ALTER TABLE signals ADD CONSTRAINT signals_pkey PRIMARY KEY (id, as_of_ts);
     """)
+    
+    # Recreate the foreign key constraint
+    logger.debug("Recreating foreign key constraint signal_user_decisions_signal_id_fkey")
+    op.execute("""
+        ALTER TABLE signal_user_decisions 
+        ADD CONSTRAINT signal_user_decisions_signal_id_fkey 
+        FOREIGN KEY (signal_id) REFERENCES signals(id) ON DELETE CASCADE;
+    """)
+    
     logger.info("✓ 'signals' table prepared with composite primary key (id, as_of_ts)")
     
     # Step 3: Convert 'signals' table to hypertable
@@ -212,8 +231,42 @@ def downgrade() -> None:
     """)
     logger.info("✓ Hypertables reverted to regular tables")
     
-    # Step 4: Drop TimescaleDB extension
-    logger.info("Step 4/4: Dropping TimescaleDB extension...")
+    # Step 4: Revert composite primary keys to single-column primary keys
+    logger.info("Step 4/6: Reverting composite primary keys...")
+    
+    # Revert signals table
+    logger.debug("Reverting 'signals' primary key to single column (id)")
+    # Drop foreign key first
+    op.execute("""
+        ALTER TABLE signal_user_decisions DROP CONSTRAINT IF EXISTS signal_user_decisions_signal_id_fkey;
+    """)
+    # Drop composite primary key
+    op.execute("""
+        ALTER TABLE signals DROP CONSTRAINT IF EXISTS signals_pkey;
+    """)
+    # Add single-column primary key
+    op.execute("""
+        ALTER TABLE signals ADD CONSTRAINT signals_pkey PRIMARY KEY (id);
+    """)
+    # Recreate foreign key
+    op.execute("""
+        ALTER TABLE signal_user_decisions 
+        ADD CONSTRAINT signal_user_decisions_signal_id_fkey 
+        FOREIGN KEY (signal_id) REFERENCES signals(id) ON DELETE CASCADE;
+    """)
+    
+    # Revert option_chain_snapshots table
+    logger.debug("Reverting 'option_chain_snapshots' primary key to single column (id)")
+    op.execute("""
+        ALTER TABLE option_chain_snapshots DROP CONSTRAINT IF EXISTS option_chain_snapshots_pkey;
+    """)
+    op.execute("""
+        ALTER TABLE option_chain_snapshots ADD CONSTRAINT option_chain_snapshots_pkey PRIMARY KEY (id);
+    """)
+    logger.info("✓ Composite primary keys reverted to single-column")
+    
+    # Step 5: Drop TimescaleDB extension
+    logger.info("Step 5/6: Dropping TimescaleDB extension...")
     logger.debug("Executing: DROP EXTENSION IF EXISTS timescaledb CASCADE")
     op.execute("DROP EXTENSION IF EXISTS timescaledb CASCADE;")
     logger.info("✓ TimescaleDB extension dropped")

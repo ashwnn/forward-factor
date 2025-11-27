@@ -86,9 +86,17 @@ Original Signal Details:
         try:
             async with AsyncSessionLocal() as db:
                 # Get signal
-                result = await db.execute(
-                    select(Signal).where(Signal.id == reminder["signal_id"])
-                )
+                query = select(Signal).where(Signal.id == reminder["signal_id"])
+                
+                # Use composite key if available for better performance
+                if "signal_as_of_ts" in reminder:
+                    try:
+                        as_of_ts = datetime.fromisoformat(reminder["signal_as_of_ts"])
+                        query = query.where(Signal.as_of_ts == as_of_ts)
+                    except (ValueError, TypeError):
+                        logger.warning(f"Invalid signal_as_of_ts in reminder: {reminder.get('signal_as_of_ts')}")
+                
+                result = await db.execute(query)
                 signal = result.scalar_one_or_none()
                 
                 if not signal:

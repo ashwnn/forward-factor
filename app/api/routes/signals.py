@@ -131,7 +131,10 @@ async def get_history(
     # Get user's decisions with signals
     result = await db.execute(
         select(SignalUserDecision, Signal)
-        .join(Signal, SignalUserDecision.signal_id == Signal.id)
+        .join(Signal, and_(
+            SignalUserDecision.signal_id == Signal.id,
+            SignalUserDecision.signal_as_of_ts == Signal.as_of_ts
+        ))
         .where(SignalUserDecision.user_id == current_user.id)
         .order_by(SignalUserDecision.decision_ts.desc())
         .limit(limit)
@@ -236,6 +239,7 @@ async def record_decision(
     # Create new decision
     decision = SignalUserDecision(
         signal_id=signal_id,
+        signal_as_of_ts=signal.as_of_ts,
         user_id=current_user.id,
         decision=request.decision,
         decision_ts=datetime.utcnow(),

@@ -64,6 +64,7 @@ class ReminderService:
             if one_day_before > now:
                 reminders.append({
                     "signal_id": str(signal.id),
+                    "signal_as_of_ts": signal.as_of_ts.isoformat(),
                     "user_id": str(user_id),
                     "type": "one_day_before",
                     "priority": "high",
@@ -73,6 +74,7 @@ class ReminderService:
             if expiry_day_open > now:
                 reminders.append({
                     "signal_id": str(signal.id),
+                    "signal_as_of_ts": signal.as_of_ts.isoformat(),
                     "user_id": str(user_id),
                     "type": "expiry_day",
                     "priority": "high",

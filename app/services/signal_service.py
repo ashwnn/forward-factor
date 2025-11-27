@@ -2,7 +2,6 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from app.models import Signal, SignalUserDecision
 from datetime import datetime
 import hashlib
@@ -33,7 +32,9 @@ class SignalService:
         signal_data: Dict[str, Any]
     ) -> Optional[Signal]:
         """
-        Create a new signal record using INSERT OR IGNORE for atomic upsert.
+        Create a new signal record using INSERT ON CONFLICT for atomic upsert.
+        
+        Uses database-specific insert dialects for PostgreSQL or SQLite.
         
         Args:
             db: Database session
@@ -44,8 +45,7 @@ class SignalService:
         """
         dedupe_key = SignalService.generate_dedupe_key(signal_data)
         
-        # Use INSERT OR IGNORE for atomic duplicate check
-        # This prevents race conditions between check and insert
+        # Build signal values dict
         signal_values = {
             "ticker": signal_data["ticker"],
             "as_of_ts": signal_data["as_of_ts"],
@@ -62,11 +62,23 @@ class SignalService:
             "reason_codes": signal_data.get("reason_codes", []),
             "dedupe_key": dedupe_key,
             "underlying_price": signal_data.get("underlying_price"),
-            "provider": signal_data.get("provider")
+            "provider": signal_data.get("provider"),
+            "is_discovery": signal_data.get("is_discovery", False)
         }
         
-        # Use SQLite's INSERT OR IGNORE via on_conflict_do_nothing
-        stmt = sqlite_insert(Signal).values(**signal_values).on_conflict_do_nothing(
+        # Use database-specific insert with conflict handling
+        # Detect dialect and use appropriate insert function
+        dialect_name = db.bind.dialect.name
+        
+        if dialect_name == 'postgresql':
+            from sqlalchemy.dialects.postgresql import insert
+        elif dialect_name == 'sqlite':
+            from sqlalchemy.dialects.sqlite import insert
+        else:
+            # Fallback to standard insert (might not support on_conflict_do_nothing)
+            from sqlalchemy import insert
+        
+        stmt = insert(Signal).values(**signal_values).on_conflict_do_nothing(
             index_elements=['dedupe_key']
         )
         result = await db.execute(stmt)
@@ -101,6 +113,7 @@ class SignalService:
     async def record_decision(
         db: AsyncSession,
         signal_id: str,
+        signal_as_of_ts: datetime,
         user_id: str,
         decision: str,
         metadata: Optional[Dict[str, Any]] = None
@@ -111,6 +124,7 @@ class SignalService:
         Args:
             db: Database session
             signal_id: Signal ID
+            signal_as_of_ts: Signal timestamp (for composite foreign key)
             user_id: User ID
             decision: "placed", "ignored", "expired", "error"
             metadata: Optional metadata dict
@@ -120,9 +134,10 @@ class SignalService:
         """
         decision_record = SignalUserDecision(
             signal_id=signal_id,
+            signal_as_of_ts=signal_as_of_ts,
             user_id=user_id,
             decision=decision,
-            metadata=metadata or {}
+            decision_metadata=metadata or {}
         )
         
         db.add(decision_record)
@@ -150,7 +165,8 @@ class SignalService:
         """
         result = await db.execute(
             select(SignalUserDecision, Signal)
-            .join(Signal, SignalUserDecision.signal_id == Signal.id)
+            .join(Signal, (SignalUserDecision.signal_id == Signal.id) & 
+                          (SignalUserDecision.signal_as_of_ts == Signal.as_of_ts))
             .where(SignalUserDecision.user_id == user_id)
             .order_by(desc(SignalUserDecision.decision_ts))
             .limit(limit)
