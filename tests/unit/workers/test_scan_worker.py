@@ -133,6 +133,7 @@ class TestScanTicker:
     async def test_no_subscribers(self, mock_provider, mock_redis, mock_db_session, mock_services):
         """✅ No subscribers → skip."""
         mock_services["sub"].get_ticker_subscribers.return_value = []
+        mock_services["user"].get_discovery_users.return_value = []
         
         worker = ScanWorker()
         await worker.scan_ticker("SPY")
@@ -141,6 +142,75 @@ class TestScanTicker:
         mock_provider.get_chain_snapshot.assert_called_once()
         mock_services["compute"].assert_not_called()
     
+    async def test_discovery_mode_with_users(self, mock_provider, mock_redis, mock_db_session, mock_services):
+        """✅ Discovery mode processes even without subscribers."""
+        # No regular subscribers
+        mock_services["sub"].get_ticker_subscribers.return_value = []
+        # But there are discovery users
+        mock_services["user"].get_discovery_users.return_value = ["discovery-user-1"]
+        
+        # Mock user settings
+        settings = MagicMock()
+        settings.ff_threshold = 0.1
+        settings.stability_scans = 2
+        settings.cooldown_minutes = 60
+        mock_services["user"].get_user_settings.return_value = settings
+        
+        # Mock compute signals
+        signal_data = {
+            "ticker": "SPY",
+            "front_expiry": date(2025, 1, 1),
+            "back_expiry": date(2025, 2, 1),
+            "ff_value": 0.5
+        }
+        mock_services["compute"].return_value = [signal_data]
+        
+        # Mock stability (stable)
+        mock_services["stability"].check_stability.return_value = (True, {})
+        
+        # Mock signal creation
+        signal_obj = MagicMock()
+        signal_obj.id = "sig-discovery-123"
+        mock_services["signal"].create_signal.return_value = signal_obj
+        
+        worker = ScanWorker()
+        await worker.scan_ticker("SPY", is_discovery=True)
+        
+        # Should process and create signal
+        mock_services["compute"].assert_called_once()
+        mock_services["signal"].create_signal.assert_called_once()
+        
+        # Verify is_discovery is set in signal_data
+        created_signal_data = mock_services["signal"].create_signal.call_args[0][1]
+        assert created_signal_data.get("is_discovery") == True
+    
+    async def test_discovery_dedupes_subscribers(self, mock_provider, mock_redis, mock_db_session, mock_services):
+        """✅ Discovery mode deduplicates users who are both subscribers and discovery users."""
+        # User is both a subscriber and has discovery mode enabled
+        mock_services["sub"].get_ticker_subscribers.return_value = ["user-1"]
+        mock_services["user"].get_discovery_users.return_value = ["user-1"]
+        
+        # Mock user settings
+        settings = MagicMock()
+        settings.ff_threshold = 0.1
+        settings.stability_scans = 2
+        settings.cooldown_minutes = 60
+        mock_services["user"].get_user_settings.return_value = settings
+        
+        mock_services["compute"].return_value = [{"ticker": "SPY", "front_expiry": date(2025,1,1), "back_expiry": date(2025,2,1), "ff_value": 0.5}]
+        mock_services["stability"].check_stability.return_value = (True, {})
+        mock_services["signal"].create_signal.return_value = MagicMock(id="sig-1")
+        
+        worker = ScanWorker()
+        await worker.scan_ticker("SPY", is_discovery=True)
+        
+        # Should only process once (deduped)
+        assert mock_services["user"].get_user_settings.call_count == 1
+        
+        # For a subscriber receiving discovery signal, is_discovery should be False
+        created_signal_data = mock_services["signal"].create_signal.call_args[0][1]
+        assert created_signal_data.get("is_discovery") == False
+
     async def test_unstable_signal(self, mock_provider, mock_redis, mock_db_session, mock_services):
         """✅ Unstable signal → log and skip."""
         mock_services["sub"].get_ticker_subscribers.return_value = ["user-1"]

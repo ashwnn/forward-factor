@@ -61,6 +61,7 @@ class UserSettings(Base):
     preferred_structure = Column(String, default="ATM_calendar_call", nullable=False)
     timezone = Column(String, default="America/Vancouver", nullable=False)
     scan_priority = Column(String, default="standard", nullable=False)  # standard, high, turbo
+    discovery_mode = Column(Boolean, default=False, nullable=False)  # Enable discovery mode for market-wide scanning
     
     # Relationship
     user = relationship("User", back_populates="settings")

@@ -42,6 +42,7 @@ class SettingsResponse(BaseModel):
     preferred_structure: str
     timezone: str
     scan_priority: str
+    discovery_mode: bool
 
 
 class UpdateSettingsRequest(BaseModel):
@@ -59,6 +60,7 @@ class UpdateSettingsRequest(BaseModel):
     preferred_structure: Optional[str] = None
     timezone: Optional[str] = None
     scan_priority: Optional[str] = None
+    discovery_mode: Optional[bool] = None
 
 
 @router.get("", response_model=SettingsResponse)
@@ -86,7 +88,8 @@ async def get_settings(
         "quiet_hours": settings.quiet_hours,
         "preferred_structure": settings.preferred_structure,
         "timezone": settings.timezone,
-        "scan_priority": settings.scan_priority
+        "scan_priority": settings.scan_priority,
+        "discovery_mode": settings.discovery_mode
     }
 
 
@@ -143,6 +146,8 @@ async def update_settings(
         settings.timezone = request.timezone
     if request.scan_priority is not None:
         settings.scan_priority = request.scan_priority
+    if request.discovery_mode is not None:
+        settings.discovery_mode = request.discovery_mode
     
     await db.commit()
     await db.refresh(settings)
@@ -160,5 +165,6 @@ async def update_settings(
         "quiet_hours": settings.quiet_hours,
         "preferred_structure": settings.preferred_structure,
         "timezone": settings.timezone,
-        "scan_priority": settings.scan_priority
+        "scan_priority": settings.scan_priority,
+        "discovery_mode": settings.discovery_mode
     }

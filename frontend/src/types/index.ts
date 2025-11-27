@@ -46,6 +46,7 @@ export interface Settings {
     preferred_structure: string;
     timezone: string;
     scan_priority: string;
+    discovery_mode: boolean;
 }
 
 export interface Signal {
@@ -62,6 +63,7 @@ export interface Signal {
     as_of_ts: string;
     quality_score: number;
     vol_point: string;
+    is_discovery?: boolean;
 }
 
 export interface Decision {

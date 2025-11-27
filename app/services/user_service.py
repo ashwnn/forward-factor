@@ -1,5 +1,5 @@
 """User service for CRUD operations."""
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import User, UserSettings
@@ -100,3 +100,19 @@ class UserService:
         await db.refresh(settings)
         
         return settings
+    
+    @staticmethod
+    async def get_discovery_users(db: AsyncSession) -> List[str]:
+        """
+        Get list of user IDs who have discovery mode enabled.
+        
+        Args:
+            db: Database session
+            
+        Returns:
+            List of user IDs with discovery_mode=True
+        """
+        result = await db.execute(
+            select(UserSettings.user_id).where(UserSettings.discovery_mode == True)
+        )
+        return [row[0] for row in result.fetchall()]

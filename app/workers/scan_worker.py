@@ -1,7 +1,7 @@
 """Scan worker for fetching chains and computing signals."""
 import logging
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, List, Set
 from app.core.database import AsyncSessionLocal
 from app.core.redis import get_redis
 from app.providers.polygon import PolygonProvider
@@ -26,14 +26,15 @@ class ScanWorker:
             self.redis = await get_redis()
         return self.redis
     
-    async def scan_ticker(self, ticker: str):
+    async def scan_ticker(self, ticker: str, is_discovery: bool = False):
         """
         Scan a single ticker for signals.
         
         Args:
             ticker: Ticker symbol to scan
+            is_discovery: Whether this is a discovery scan (from discovery_queue)
         """
-        logger.info(f"Scanning {ticker}...")
+        logger.info(f"Scanning {ticker} (discovery={is_discovery})...")
         
         try:
             # Fetch chain snapshot
@@ -48,16 +49,27 @@ class ScanWorker:
             async with AsyncSessionLocal() as db:
                 subscriber_ids = await SubscriptionService.get_ticker_subscribers(db, ticker)
                 
-                if not subscriber_ids:
-                    logger.info(f"No subscribers for {ticker}, skipping")
+                # For discovery mode, also get users with discovery_mode enabled
+                discovery_user_ids: List[str] = []
+                if is_discovery:
+                    discovery_user_ids = await UserService.get_discovery_users(db)
+                
+                # Combine subscribers and discovery users (avoid duplicates)
+                all_user_ids: Set[str] = set(subscriber_ids) | set(discovery_user_ids)
+                
+                if not all_user_ids:
+                    logger.info(f"No subscribers or discovery users for {ticker}, skipping")
                     return
                 
-                # For each subscriber, compute signals with their settings
-                for user_id in subscriber_ids:
+                # For each user, compute signals with their settings
+                for user_id in all_user_ids:
                     user_settings_obj = await UserService.get_user_settings(db, user_id)
                     
                     if not user_settings_obj:
                         continue
+                    
+                    # Determine if this is a discovery signal for this user
+                    is_discovery_signal = user_id not in subscriber_ids
                     
                     # Convert to dict for signal engine
                     user_settings = {
@@ -75,6 +87,9 @@ class ScanWorker:
                     
                     # Process each signal
                     for signal_data in signals:
+                        # Mark if this is a discovery signal
+                        signal_data["is_discovery"] = is_discovery_signal
+                        
                         # Check stability using expiry dates (not DTE)
                         should_alert, state = await stability_tracker.check_stability(
                             ticker=signal_data["ticker"],
@@ -94,7 +109,7 @@ class ScanWorker:
                             
                             if signal:
                                 # Signal was created (not a duplicate), queue for notification
-                                logger.info(f"Created signal {signal.id} for {ticker}")
+                                logger.info(f"Created signal {signal.id} for {ticker} (discovery={is_discovery_signal})")
                                 await redis.lpush("notification_queue", signal.id)
                             else:
                                 # Signal was a duplicate, skip notification
@@ -118,22 +133,31 @@ class ScanWorker:
             await self.redis.close()
     
     async def run(self):
-        """Run worker loop, processing scan jobs from Redis queue."""
+        """Run worker loop, processing scan jobs from Redis queues."""
         logger.info("Scan worker started")
         redis = await self._get_redis()
         
         try:
             while True:
                 try:
-                    # Block and wait for scan job
-                    result = await redis.brpop("scan_queue", timeout=5)
+                    # Check for regular scan jobs first (higher priority)
+                    result = await redis.brpop("scan_queue", timeout=1)
                     
                     if result:
                         queue_name, ticker = result
-                        await self.scan_ticker(ticker)
-                    else:
-                        # No jobs, sleep briefly
-                        await asyncio.sleep(1)
+                        await self.scan_ticker(ticker, is_discovery=False)
+                        continue
+                    
+                    # Check discovery queue
+                    result = await redis.brpop("discovery_queue", timeout=1)
+                    
+                    if result:
+                        queue_name, ticker = result
+                        await self.scan_ticker(ticker, is_discovery=True)
+                        continue
+                    
+                    # No jobs in either queue, sleep briefly
+                    await asyncio.sleep(1)
                         
                 except Exception as e:
                     logger.error(f"Worker error: {e}", exc_info=True)

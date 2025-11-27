@@ -172,3 +172,97 @@ class TestParsing:
         assert len(expiries[0].contracts) == 2
         assert expiries[1].expiry_date == date(2025, 2, 21)
         assert len(expiries[1].contracts) == 1
+
+
+# ============================================================================
+# Tests for get_top_liquid_tickers
+# ============================================================================
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestGetTopLiquidTickers:
+    """Test get_top_liquid_tickers method."""
+    
+    async def test_success(self, provider, mock_client):
+        """✅ Successfully fetch and sort top tickers by dollar volume."""
+        # Mock response
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {
+            "status": "OK",
+            "results": [
+                {"T": "AAPL", "c": 150.0, "v": 10000000},  # $1.5B volume
+                {"T": "MSFT", "c": 300.0, "v": 8000000},   # $2.4B volume
+                {"T": "SPY", "c": 450.0, "v": 20000000},   # $9B volume
+                {"T": "NVDA", "c": 500.0, "v": 5000000},   # $2.5B volume
+            ]
+        }
+        resp.raise_for_status = MagicMock()
+        mock_client.get.return_value = resp
+        
+        tickers = await provider.get_top_liquid_tickers(limit=3)
+        
+        # Should be sorted by dollar volume descending
+        assert tickers == ["SPY", "NVDA", "MSFT"]
+    
+    async def test_filters_non_standard_tickers(self, provider, mock_client):
+        """✅ Filter out tickers with special characters or >5 chars."""
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {
+            "status": "OK",
+            "results": [
+                {"T": "AAPL", "c": 150.0, "v": 10000000},
+                {"T": "BRK.A", "c": 500000.0, "v": 1000},   # Has period
+                {"T": "SPY123", "c": 450.0, "v": 20000000}, # Too long
+                {"T": "MSFT", "c": 300.0, "v": 8000000},
+            ]
+        }
+        resp.raise_for_status = MagicMock()
+        mock_client.get.return_value = resp
+        
+        tickers = await provider.get_top_liquid_tickers(limit=10)
+        
+        assert "BRK.A" not in tickers
+        assert "SPY123" not in tickers
+        assert "AAPL" in tickers
+        assert "MSFT" in tickers
+    
+    async def test_empty_results(self, provider, mock_client):
+        """✅ Handle empty results."""
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {
+            "status": "OK",
+            "results": []
+        }
+        resp.raise_for_status = MagicMock()
+        mock_client.get.return_value = resp
+        
+        tickers = await provider.get_top_liquid_tickers()
+        
+        assert tickers == []
+    
+    async def test_api_error_status(self, provider, mock_client):
+        """✅ API error (non-OK status) → ProviderError."""
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {"status": "ERROR", "error": "Something went wrong"}
+        resp.raise_for_status = MagicMock()
+        mock_client.get.return_value = resp
+        
+        with pytest.raises(ProviderError) as exc:
+            await provider.get_top_liquid_tickers()
+        
+        assert "Polygon API returned status: ERROR" in str(exc.value)
+    
+    async def test_403_error(self, provider, mock_client):
+        """✅ 403 error → ProviderError with specific message."""
+        error_resp = MagicMock()
+        error_resp.status_code = 403
+        mock_client.get.side_effect = httpx.HTTPStatusError("403 Forbidden", request=None, response=error_resp)
+        
+        with pytest.raises(ProviderError) as exc:
+            await provider.get_top_liquid_tickers()
+        
+        assert "Access Denied" in str(exc.value)

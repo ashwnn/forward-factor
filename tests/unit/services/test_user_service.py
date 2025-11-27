@@ -126,3 +126,33 @@ class TestUpdateUserSettings:
         # The mock object accepts any attribute set, but the code checks hasattr
         
         mock_db.commit.assert_called_once()
+
+
+# ============================================================================
+# Tests for get_discovery_users
+# ============================================================================
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+class TestGetDiscoveryUsers:
+    """Test get_discovery_users method."""
+    
+    async def test_returns_discovery_enabled_users(self, mock_db):
+        """✅ Return user IDs with discovery_mode=True."""
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = [("user-1",), ("user-2",), ("user-3",)]
+        mock_db.execute.return_value = mock_result
+        
+        user_ids = await UserService.get_discovery_users(mock_db)
+        
+        assert user_ids == ["user-1", "user-2", "user-3"]
+    
+    async def test_returns_empty_list_if_no_users(self, mock_db):
+        """✅ Return empty list if no users have discovery mode enabled."""
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = []
+        mock_db.execute.return_value = mock_result
+        
+        user_ids = await UserService.get_discovery_users(mock_db)
+        
+        assert user_ids == []

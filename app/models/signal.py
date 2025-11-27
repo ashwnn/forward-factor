@@ -1,5 +1,5 @@
 """Signal model for storing computed Forward Factor signals."""
-from sqlalchemy import Column, String, DateTime, Integer, Float, JSON, Date
+from sqlalchemy import Column, String, DateTime, Integer, Float, JSON, Date, Boolean
 from datetime import datetime, timezone
 import uuid
 from app.core.database import Base
@@ -25,6 +25,7 @@ class Signal(Base):
     quality_score = Column(Float, nullable=True)
     reason_codes = Column(JSON, default=list)
     dedupe_key = Column(String, unique=True, nullable=False, index=True)
+    is_discovery = Column(Boolean, default=False, nullable=False)  # Whether this signal came from discovery mode
     
     # Snapshot reference
     underlying_price = Column(Float, nullable=True)
