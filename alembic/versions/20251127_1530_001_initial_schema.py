@@ -56,7 +56,7 @@ def upgrade() -> None:
         sa.Column('email', sa.String(), nullable=True),
         sa.Column('password_hash', sa.String(), nullable=True),
         sa.Column('telegram_username', sa.String(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('status', sa.String(), nullable=False),
         sa.PrimaryKeyConstraint('id')
     )
@@ -96,7 +96,7 @@ def upgrade() -> None:
         sa.Column('user_id', sa.String(), nullable=False),
         sa.Column('ticker', sa.String(), nullable=False),
         sa.Column('active', sa.Boolean(), nullable=False),
-        sa.Column('added_at', sa.DateTime(), nullable=False),
+        sa.Column('added_at', sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('user_id', 'ticker'),
         sa.UniqueConstraint('user_id', 'ticker', name='uq_user_ticker')
@@ -110,7 +110,7 @@ def upgrade() -> None:
         'master_tickers',
         sa.Column('ticker', sa.String(), nullable=False),
         sa.Column('active_subscriber_count', sa.Integer(), nullable=False),
-        sa.Column('last_scan_at', sa.DateTime(), nullable=True),
+        sa.Column('last_scan_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('scan_tier', sa.String(), nullable=False),
         sa.PrimaryKeyConstraint('ticker')
     )
@@ -122,7 +122,7 @@ def upgrade() -> None:
     op.create_table(
         'signals',
         sa.Column('id', sa.String(), nullable=False),
-        sa.Column('as_of_ts', sa.DateTime(), nullable=False),
+        sa.Column('as_of_ts', sa.DateTime(timezone=True), nullable=False),
         sa.Column('ticker', sa.String(), nullable=False),
         sa.Column('front_expiry', sa.Date(), nullable=False),
         sa.Column('back_expiry', sa.Date(), nullable=False),
@@ -197,7 +197,7 @@ def upgrade() -> None:
     op.create_table(
         'option_chain_snapshots',
         sa.Column('id', sa.String(), nullable=False),
-        sa.Column('as_of_ts', sa.DateTime(), nullable=False),
+        sa.Column('as_of_ts', sa.DateTime(timezone=True), nullable=False),
         sa.Column('ticker', sa.String(), nullable=False),
         sa.Column('provider', sa.String(), nullable=False),
         sa.Column('underlying_price', sa.Float(), nullable=True),
@@ -249,10 +249,10 @@ def upgrade() -> None:
         'signal_user_decisions',
         sa.Column('id', sa.String(), nullable=False),
         sa.Column('signal_id', sa.String(), nullable=False),
-        sa.Column('signal_as_of_ts', sa.DateTime(), nullable=False),
+        sa.Column('signal_as_of_ts', sa.DateTime(timezone=True), nullable=False),
         sa.Column('user_id', sa.String(), nullable=False),
         sa.Column('decision', sa.String(), nullable=False),
-        sa.Column('decision_ts', sa.DateTime(), nullable=False),
+        sa.Column('decision_ts', sa.DateTime(timezone=True), nullable=False),
         sa.Column('decision_metadata', postgresql.JSON(astext_type=sa.Text()), nullable=True),
         sa.Column('entry_price', sa.Float(), nullable=True),
         sa.Column('exit_price', sa.Float(), nullable=True),
