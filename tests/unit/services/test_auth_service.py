@@ -19,7 +19,9 @@ from app.models.user import User, UserSettings
 @pytest.fixture
 def mock_db():
     """Create a mock database session."""
-    return AsyncMock()
+    db = AsyncMock()
+    db.add = MagicMock()
+    return db
 
 
 @pytest.fixture

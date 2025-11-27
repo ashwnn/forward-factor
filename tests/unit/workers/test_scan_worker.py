@@ -54,6 +54,14 @@ def mock_services():
          patch("app.workers.scan_worker.stability_tracker") as stab_tracker, \
          patch("app.workers.scan_worker.compute_signals") as comp_sigs:
         
+        # Configure async methods
+        sub_svc.get_ticker_subscribers = AsyncMock()
+        user_svc.get_discovery_users = AsyncMock()
+        user_svc.get_user_settings = AsyncMock()
+        sig_svc.create_signal = AsyncMock()
+        tick_svc.update_last_scan = AsyncMock()
+        stab_tracker.check_stability = AsyncMock()
+        
         yield {
             "sub": sub_svc,
             "user": user_svc,
@@ -257,7 +265,7 @@ class TestWorkerRun:
         # Mock redis pop to return one job then raise exception to break loop
         mock_redis.brpop.side_effect = [
             ("scan_queue", "SPY"),
-            Exception("Break loop")
+            KeyboardInterrupt("Break loop")
         ]
         
         worker = ScanWorker()

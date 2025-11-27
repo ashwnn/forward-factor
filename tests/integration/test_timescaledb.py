@@ -1,6 +1,7 @@
 """Integration tests for TimescaleDB hypertables and features."""
 import pytest
 from sqlalchemy import text, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone, timedelta
 from app.models import Signal, OptionChainSnapshot
 import asyncio

@@ -12,7 +12,7 @@ from app.models.user import User, UserSettings
 from app.models.signal import Signal
 from app.models.decision import SignalUserDecision
 from app.models.subscription import Subscription
-from app.models.ticker import Ticker
+from app.models.ticker import MasterTicker
 
 
 # ============================================================================
@@ -143,11 +143,11 @@ class TestTickerModel:
     
     def test_ticker_creation(self):
         """✅ Creation with valid data."""
-        ticker = Ticker(
-            symbol="SPY",
-            last_scan_time=datetime(2025, 1, 1, 10, 0, 0),
-            is_active=True
+        ticker = MasterTicker(
+            ticker="SPY",
+            last_scan_at=datetime(2025, 1, 1, 10, 0, 0),
+            scan_tier="high"
         )
         
-        assert ticker.symbol == "SPY"
-        assert ticker.is_active is True
+        assert ticker.ticker == "SPY"
+        assert ticker.scan_tier == "high"

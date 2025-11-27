@@ -7,10 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 # Mock imports
 from app.bot.handlers.start import start_command
-from app.bot.handlers.watchlist import add_ticker_command, remove_ticker_command, list_watchlist_command
+from app.bot.handlers.watchlist import add_command, remove_command, list_command
 from app.bot.handlers.settings import settings_command
 from app.bot.handlers.history import history_command
-from app.bot.handlers.callbacks import handle_decision
+from app.bot.handlers.callbacks import button_callback
 
 
 # ============================================================================
@@ -19,14 +19,16 @@ from app.bot.handlers.callbacks import handle_decision
 
 @pytest.fixture
 def mock_update():
-    """Mock Telegram Update."""
+    """Mock Telegram update."""
     update = MagicMock()
-    update.effective_chat.id = 12345
+    update.effective_user.id = 123456789
     update.effective_user.username = "testuser"
+    update.effective_chat.id = 123456789
     update.message.reply_text = AsyncMock()
     update.callback_query.answer = AsyncMock()
+    update.callback_query.edit_message_text = AsyncMock()
     update.callback_query.edit_message_reply_markup = AsyncMock()
-    update.callback_query.data = "decision:place:sig-123"
+    update.callback_query.data = "some_data"
     return update
 
 
@@ -52,20 +54,52 @@ def mock_db_session():
 @pytest.fixture
 def mock_services():
     """Mock services."""
-    with patch("app.services.UserService") as user_svc, \
-         patch("app.services.SubscriptionService") as sub_svc, \
-         patch("app.services.SignalService") as sig_svc:
+    # We need to patch the services where they are imported in the handlers
+    with patch("app.bot.handlers.start.UserService") as start_user_svc, \
+         patch("app.bot.handlers.watchlist.UserService") as wl_user_svc, \
+         patch("app.bot.handlers.watchlist.SubscriptionService") as wl_sub_svc, \
+         patch("app.bot.handlers.watchlist.TickerService") as wl_tick_svc, \
+         patch("app.bot.handlers.settings.UserService") as set_user_svc, \
+         patch("app.bot.handlers.history.UserService") as hist_user_svc, \
+         patch("app.bot.handlers.history.SignalService") as hist_sig_svc, \
+         patch("app.bot.handlers.callbacks.UserService") as cb_user_svc, \
+         patch("app.bot.handlers.callbacks.SignalService") as cb_sig_svc:
+        
+        # Configure AsyncMocks
+        # User Service
+        for svc in [start_user_svc, wl_user_svc, set_user_svc, hist_user_svc, cb_user_svc]:
+            svc.get_user_by_chat_id = AsyncMock()
+            svc.get_or_create_user = AsyncMock()
+            svc.update_user_settings = AsyncMock()
+        
+        # Subscription Service
+        wl_sub_svc.add_subscription = AsyncMock()
+        wl_sub_svc.remove_subscription = AsyncMock()
+        wl_sub_svc.get_user_subscriptions = AsyncMock()
+        
+        # Ticker Service
+        wl_tick_svc.update_ticker_registry = AsyncMock()
+        
+        # Signal Service
+        hist_sig_svc.get_user_decisions = AsyncMock()
+        cb_sig_svc.record_decision = AsyncMock()
+        
         yield {
-            "user": user_svc,
-            "sub": sub_svc,
-            "signal": sig_svc
+            "user": start_user_svc, # They should all be similar mocks, but we return one for setting return_values
+            "sub": wl_sub_svc,
+            "signal": cb_sig_svc,
+            # We might need to set return values on ALL of them if they are distinct objects
+            "all_user": [start_user_svc, wl_user_svc, set_user_svc, hist_user_svc, cb_user_svc],
+            "all_sub": [wl_sub_svc],
+            "all_signal": [hist_sig_svc, cb_sig_svc]
         }
 
 
 @pytest.fixture
 def mock_settings():
     """Mock app settings."""
-    with patch("app.core.config.settings") as mock:
+    # Patch settings where it is used
+    with patch("app.bot.handlers.start.settings") as mock:
         mock.invite_code = "secret"
         yield mock
 
@@ -81,7 +115,8 @@ class TestStartHandler:
     
     async def test_start_existing_user(self, mock_update, mock_context, mock_db_session, mock_services):
         """✅ User registration/retrieval."""
-        mock_services["user"].get_user_by_chat_id.return_value = MagicMock()
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = MagicMock()
         
         await start_command(mock_update, mock_context)
         
@@ -90,7 +125,8 @@ class TestStartHandler:
     
     async def test_start_new_user_no_code(self, mock_update, mock_context, mock_db_session, mock_services, mock_settings):
         """✅ Missing invite code."""
-        mock_services["user"].get_user_by_chat_id.return_value = None
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = None
         mock_context.args = []
         
         await start_command(mock_update, mock_context)
@@ -100,11 +136,13 @@ class TestStartHandler:
     
     async def test_start_new_user_valid_code(self, mock_update, mock_context, mock_db_session, mock_services, mock_settings):
         """✅ Valid invite code."""
-        mock_services["user"].get_user_by_chat_id.return_value = None
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = None
         mock_context.args = ["secret"]
         
         await start_command(mock_update, mock_context)
         
+        # Verify call on the specific mock used by start_command
         mock_services["user"].get_or_create_user.assert_called_once()
         mock_update.message.reply_text.assert_called_once()
 
@@ -121,10 +159,12 @@ class TestWatchlistHandler:
     async def test_add_ticker(self, mock_update, mock_context, mock_db_session, mock_services):
         """✅ Add ticker via bot."""
         mock_context.args = ["SPY"]
-        mock_services["user"].get_user_by_chat_id.return_value = MagicMock(id="user-1")
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = MagicMock(id="user-1")
         
-        await add_ticker_command(mock_update, mock_context)
+        await add_command(mock_update, mock_context)
         
+        # Verify call on the specific mock used by add_command (wl_sub_svc is mock_services['sub'])
         mock_services["sub"].add_subscription.assert_called_once()
         mock_update.message.reply_text.assert_called_once()
         assert "Added SPY" in mock_update.message.reply_text.call_args[0][0]
@@ -132,10 +172,13 @@ class TestWatchlistHandler:
     async def test_remove_ticker(self, mock_update, mock_context, mock_db_session, mock_services):
         """✅ Remove ticker via bot."""
         mock_context.args = ["SPY"]
-        mock_services["user"].get_user_by_chat_id.return_value = MagicMock(id="user-1")
-        mock_services["sub"].remove_subscription.return_value = True
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = MagicMock(id="user-1")
         
-        await remove_ticker_command(mock_update, mock_context)
+        for svc in mock_services["all_sub"]:
+            svc.remove_subscription.return_value = True
+        
+        await remove_command(mock_update, mock_context)
         
         mock_services["sub"].remove_subscription.assert_called_once()
         mock_update.message.reply_text.assert_called_once()
@@ -143,12 +186,15 @@ class TestWatchlistHandler:
     
     async def test_list_watchlist(self, mock_update, mock_context, mock_db_session, mock_services):
         """✅ View watchlist."""
-        mock_services["user"].get_user_by_chat_id.return_value = MagicMock(id="user-1")
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = MagicMock(id="user-1")
+        
         mock_sub = MagicMock()
         mock_sub.ticker = "SPY"
-        mock_services["sub"].get_user_subscriptions.return_value = [mock_sub]
+        for svc in mock_services["all_sub"]:
+            svc.get_user_subscriptions.return_value = [mock_sub]
         
-        await list_watchlist_command(mock_update, mock_context)
+        await list_command(mock_update, mock_context)
         
         mock_update.message.reply_text.assert_called_once()
         assert "SPY" in mock_update.message.reply_text.call_args[0][0]
@@ -165,11 +211,15 @@ class TestCallbacksHandler:
     
     async def test_decision_callback(self, mock_update, mock_context, mock_db_session, mock_services):
         """✅ Signal decision callbacks."""
-        mock_update.callback_query.data = "decision:placed:sig-123"
-        mock_services["user"].get_user_by_chat_id.return_value = MagicMock(id="user-1")
+        # Use format: action:signal_id
+        mock_update.callback_query.data = "place:sig-123"
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = MagicMock(id="user-1")
         
-        await handle_decision(mock_update, mock_context)
+        await button_callback(mock_update, mock_context)
         
+        # Verify call on the specific mock used by button_callback (cb_sig_svc is mock_services['signal'])
         mock_services["signal"].record_decision.assert_called_once()
         mock_update.callback_query.answer.assert_called_once()
-        mock_update.callback_query.edit_message_reply_markup.assert_called_once()
+        # It calls edit_message_text, not edit_message_reply_markup
+        mock_update.callback_query.edit_message_text.assert_called_once()

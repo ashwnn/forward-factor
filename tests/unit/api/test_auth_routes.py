@@ -79,10 +79,12 @@ class TestRegister:
         
         # Import the route handler directly to test logic
         from app.api.routes.auth import register, RegisterRequest
+        from fastapi import Request
         
-        request = RegisterRequest(email="test@example.com", password="password123")
+        request_obj = MagicMock(spec=Request)
+        register_request = RegisterRequest(email="test@example.com", password="password123")
         
-        response = await register(request, mock_db)
+        response = await register(request_obj, register_request, mock_db)
         
         # Verify response
         assert response["access_token"] == "mock-token"
@@ -98,20 +100,26 @@ class TestRegister:
         mock_settings.registration_enabled = False
         
         from app.api.routes.auth import register, RegisterRequest
-        request = RegisterRequest(email="test@example.com", password="password123")
+        from fastapi import Request
+        
+        request_obj = MagicMock(spec=Request)
+        register_request = RegisterRequest(email="test@example.com", password="password123")
         
         with pytest.raises(HTTPException) as exc:
-            await register(request, mock_db)
+            await register(request_obj, register_request, mock_db)
         
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
     
     async def test_weak_password(self, mock_db, mock_settings):
         """✅ Weak password (< 8 chars) → 400."""
         from app.api.routes.auth import register, RegisterRequest
-        request = RegisterRequest(email="test@example.com", password="short")
+        from fastapi import Request
+        
+        request_obj = MagicMock(spec=Request)
+        register_request = RegisterRequest(email="test@example.com", password="short")
         
         with pytest.raises(HTTPException) as exc:
-            await register(request, mock_db)
+            await register(request_obj, register_request, mock_db)
         
         assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -132,12 +140,14 @@ class TestLogin:
         
         from app.api.routes.auth import login
         from fastapi.security import OAuth2PasswordRequestForm
+        from fastapi import Request
         
+        request_obj = MagicMock(spec=Request)
         form_data = MagicMock(spec=OAuth2PasswordRequestForm)
         form_data.username = "test@example.com"
         form_data.password = "password123"
         
-        response = await login(form_data, mock_db)
+        response = await login(request_obj, form_data, mock_db)
         
         assert response["access_token"] == "mock-token"
         assert response["user"]["telegram_username"] == "testuser"
@@ -147,12 +157,15 @@ class TestLogin:
         mock_auth_service.authenticate_user = AsyncMock(return_value=None)
         
         from app.api.routes.auth import login
+        from fastapi import Request
+        
+        request_obj = MagicMock(spec=Request)
         form_data = MagicMock()
         form_data.username = "test@example.com"
         form_data.password = "wrong"
         
         with pytest.raises(HTTPException) as exc:
-            await login(form_data, mock_db)
+            await login(request_obj, form_data, mock_db)
         
         assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
 
