@@ -1,20 +1,24 @@
 #!/bin/bash
 set -e
 
-echo "==================================================================="
-echo "🚀 Forward Factor - Start (Preserving Data)"
-echo "==================================================================="
+echo "Stopping containers and removing volumes..."
+docker compose down
+
+echo "Starting TimescaleDB..."
+docker compose up -d timescaledb
 
 echo ""
-echo "🛑 Stopping containers (if running)..."
-docker compose down --remove-orphans
+echo "Waiting for database to be ready..."
+sleep 5
 
 echo ""
-echo "🏗️  Building and starting containers..."
-docker compose up --build -d && docker compose exec api alembic upgrade head
+echo "Running database migrations..."
+docker compose run --rm api alembic upgrade head
 
 echo ""
-echo "==================================================================="
-echo "✅ Application started!"
-echo "==================================================================="
+echo "Starting all services..."
+docker compose up -d
+
+echo ""
+echo "Application started with fresh database!"
 echo "To follow logs, run: docker compose logs -f"
