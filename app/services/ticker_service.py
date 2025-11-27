@@ -43,9 +43,6 @@ class TickerService:
     
     @staticmethod
     async def update_ticker_registry(db: AsyncSession):
-    
-    @staticmethod
-    async def update_ticker_registry(db: AsyncSession):
         """
         Update master ticker registry based on active subscriptions.
         Recalculates subscriber counts and updates scan tiers.
