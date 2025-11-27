@@ -164,10 +164,13 @@ def apply_liquidity_filters(
     
     # Check bid-ask spread
     mid = (contract.bid + contract.ask) / 2.0
-    if mid > 0:
-        spread_pct = (contract.ask - contract.bid) / mid
-        if spread_pct > max_bid_ask_pct:
-            reasons.append(f"wide_spread_{spread_pct:.2%}")
+    if mid <= 0:
+        reasons.append("zero_mid_price")
+        return False, reasons
+        
+    spread_pct = (contract.ask - contract.bid) / mid
+    if spread_pct > max_bid_ask_pct:
+        reasons.append(f"wide_spread_{spread_pct:.2%}")
     
     # Check OI
     if contract.open_interest is None or contract.open_interest < min_oi:

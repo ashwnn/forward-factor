@@ -66,7 +66,7 @@ def create_contract(
         option_type=option_type,
         bid=bid,
         ask=ask,
-        last=(bid + ask) / 2,
+        last=(bid + ask) / 2 if (bid is not None and ask is not None) else None,
         volume=volume,
         open_interest=open_interest,
         implied_volatility=implied_volatility,
