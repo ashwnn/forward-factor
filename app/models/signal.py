@@ -26,7 +26,7 @@ class Signal(Base):
     vol_point = Column(String, nullable=False)
     quality_score = Column(Float, nullable=True)
     reason_codes = Column(JSON, default=list)
-    dedupe_key = Column(String, unique=True, nullable=False, index=True)
+    dedupe_key = Column(String, nullable=False, index=True)
     is_discovery = Column(Boolean, default=False, nullable=False)  # Whether this signal came from discovery mode
     
     # Snapshot reference
