@@ -45,8 +45,21 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;")
     logger.info("✓ TimescaleDB extension enabled")
     
-    # Step 2: Convert 'signals' table to hypertable
-    logger.info("Step 2/5: Converting 'signals' table to hypertable...")
+    
+    # Step 2: Prepare 'signals' table for hypertable conversion
+    logger.info("Step 2/7: Preparing 'signals' table for hypertable conversion...")
+    logger.debug("Dropping existing primary key constraint on 'signals'")
+    op.execute("""
+        ALTER TABLE signals DROP CONSTRAINT IF EXISTS signals_pkey;
+    """)
+    logger.debug("Creating composite primary key (id, as_of_ts) on 'signals'")
+    op.execute("""
+        ALTER TABLE signals ADD CONSTRAINT signals_pkey PRIMARY KEY (id, as_of_ts);
+    """)
+    logger.info("✓ 'signals' table prepared with composite primary key (id, as_of_ts)")
+    
+    # Step 3: Convert 'signals' table to hypertable
+    logger.info("Step 3/7: Converting 'signals' table to hypertable...")
     logger.debug("Partition column: as_of_ts, Chunk interval: 1 day")
     op.execute("""
         SELECT create_hypertable(
@@ -58,8 +71,20 @@ def upgrade() -> None:
     """)
     logger.info("✓ 'signals' table converted to hypertable")
     
-    # Step 3: Convert 'option_chain_snapshots' table to hypertable
-    logger.info("Step 3/5: Converting 'option_chain_snapshots' table to hypertable...")
+    # Step 4: Prepare 'option_chain_snapshots' table for hypertable conversion
+    logger.info("Step 4/7: Preparing 'option_chain_snapshots' table for hypertable conversion...")
+    logger.debug("Dropping existing primary key constraint on 'option_chain_snapshots'")
+    op.execute("""
+        ALTER TABLE option_chain_snapshots DROP CONSTRAINT IF EXISTS option_chain_snapshots_pkey;
+    """)
+    logger.debug("Creating composite primary key (id, as_of_ts) on 'option_chain_snapshots'")
+    op.execute("""
+        ALTER TABLE option_chain_snapshots ADD CONSTRAINT option_chain_snapshots_pkey PRIMARY KEY (id, as_of_ts);
+    """)
+    logger.info("✓ 'option_chain_snapshots' table prepared with composite primary key (id, as_of_ts)")
+    
+    # Step 5: Convert 'option_chain_snapshots' table to hypertable
+    logger.info("Step 5/7: Converting 'option_chain_snapshots' table to hypertable...")
     logger.debug("Partition column: as_of_ts, Chunk interval: 1 day")
     op.execute("""
         SELECT create_hypertable(
@@ -71,8 +96,8 @@ def upgrade() -> None:
     """)
     logger.info("✓ 'option_chain_snapshots' table converted to hypertable")
     
-    # Step 4: Enable compression on 'signals' table
-    logger.info("Step 4/5: Configuring compression policies...")
+    # Step 6: Enable compression on 'signals' table
+    logger.info("Step 6/7: Configuring compression policies...")
     logger.debug("Configuring compression for 'signals': segment by ticker, order by as_of_ts DESC")
     op.execute("""
         ALTER TABLE signals SET (
@@ -102,8 +127,8 @@ def upgrade() -> None:
     """)
     logger.info("✓ Compression policy added for 'option_chain_snapshots' (compress after 7 days)")
     
-    # Step 5: Create composite indexes for common query patterns
-    logger.info("Step 5/5: Creating composite indexes...")
+    # Step 7: Create composite indexes for common query patterns
+    logger.info("Step 7/7: Creating composite indexes...")
     logger.debug("Creating index: idx_signals_ticker_time on (ticker, as_of_ts)")
     op.create_index(
         'idx_signals_ticker_time',
