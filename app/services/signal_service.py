@@ -168,3 +168,160 @@ class SignalService:
             })
         
         return decisions
+    
+    # ========== TimescaleDB-Optimized Queries ==========
+    
+    @staticmethod
+    async def get_signals_in_range(
+        db: AsyncSession,
+        ticker: str,
+        hours: int = 24
+    ) -> List[Signal]:
+        """
+        Get signals for a ticker within time range.
+        
+        Optimized for TimescaleDB using:
+        - Composite index (ticker, as_of_ts) for efficient filtering
+        - Chunk exclusion for faster time-range queries
+        
+        Args:
+            db: Database session
+            ticker: Stock ticker symbol
+            hours: Number of hours to look back
+        
+        Returns:
+            List of Signal objects
+        """
+        from sqlalchemy import func, text
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Fetching signals for {ticker} in last {hours} hours")
+        
+        result = await db.execute(
+            select(Signal)
+            .where(
+                Signal.ticker == ticker.upper(),
+                Signal.as_of_ts >func.now() - text(f"INTERVAL '{hours} hours'")
+            )
+            .order_by(desc(Signal.as_of_ts))
+        )
+        
+        signals = result.scalars().all()
+        logger.debug(f"Found {len(signals)} signals for {ticker}")
+        return signals
+    
+    @staticmethod
+    async def get_hourly_signal_counts(
+        db: AsyncSession,
+        ticker: Optional[str] = None,
+        days: int = 7
+    ) -> List[Dict[str, Any]]:
+        """
+        Get hourly signal counts using TimescaleDB time_bucket.
+        
+        This leverages TimescaleDB's time_bucket function for efficient
+        time-series aggregation, which is much faster than manual grouping.
+        
+        Args:
+            db: Database session
+            ticker: Optional ticker filter (if None, aggregates all tickers)
+            days: Number of days to look back
+        
+        Returns:
+            List of dictionaries with hour, count, avg_ff_value, max_ff_value
+        
+        Example output:
+            [
+                {
+                    "hour": "2025-11-27 10:00:00",
+                    "signal_count": 15,
+                    "avg_ff_value": 0.25,
+                    "max_ff_value": 0.35
+                },
+                ...
+            ]
+        """
+        from sqlalchemy import text
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Getting hourly signal counts for {ticker or 'all tickers'} over {days} days")
+        
+        # Build query with optional ticker filter
+        ticker_filter = ""
+        params = {"days": days}
+        
+        if ticker:
+            ticker_filter = "AND ticker = :ticker"
+            params["ticker"] = ticker.upper()
+        
+        query = text(f"""
+            SELECT
+                time_bucket('1 hour', as_of_ts) AS hour,
+                COUNT(*) as signal_count,
+                ROUND(AVG(ff_value)::numeric, 4) as avg_ff_value,
+                ROUND(MAX(ff_value)::numeric, 4) as max_ff_value
+            FROM signals
+            WHERE as_of_ts > NOW() - INTERVAL ':days days'
+            {ticker_filter}
+            GROUP BY hour
+            ORDER BY hour DESC
+        """)
+        
+        result = await db.execute(query, params)
+        counts = [dict(row._mapping) for row in result.fetchall()]
+        
+        logger.debug(f"Retrieved {len(counts)} hourly buckets")
+        return counts
+    
+    @staticmethod
+    async def get_daily_signal_stats(
+        db: AsyncSession,
+        ticker: Optional[str] = None,
+        days: int = 30
+    ) -> List[Dict[str, Any]]:
+        """
+        Get daily signal statistics using TimescaleDB time_bucket.
+        
+        Args:
+            db: Database session
+            ticker: Optional ticker filter
+            days: Number of days to look back
+        
+        Returns:
+            List of daily statistics including count, avg/min/max ff_value
+        """
+        from sqlalchemy import text
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Getting daily stats for {ticker or 'all tickers'} over {days} days")
+        
+        ticker_filter = ""
+        params = {"days": days}
+        
+        if ticker:
+            ticker_filter = "AND ticker = :ticker"
+            params["ticker"] = ticker.upper()
+        
+        query = text(f"""
+            SELECT
+                time_bucket('1 day', as_of_ts) AS day,
+                COUNT(*) as signal_count,
+                ROUND(AVG(ff_value)::numeric, 4) as avg_ff_value,
+                ROUND(MIN(ff_value)::numeric, 4) as min_ff_value,
+                ROUND(MAX(ff_value)::numeric, 4) as max_ff_value,
+                ROUND(STDDEV(ff_value)::numeric, 4) as stddev_ff_value
+            FROM signals
+            WHERE as_of_ts > NOW() - INTERVAL ':days days'
+            {ticker_filter}
+            GROUP BY day
+            ORDER BY day DESC
+        """)
+        
+        result = await db.execute(query, params)
+        stats = [dict(row._mapping) for row in result.fetchall()]
+        
+        logger.debug(f"Retrieved {len(stats)} daily buckets")
+        return stats

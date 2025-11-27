@@ -16,7 +16,7 @@ import time
 import sys
 
 # Import routers
-from app.api.routes import auth, watchlist, settings as settings_router, signals
+from app.api.routes import auth, watchlist, settings as settings_router, signals, health
 
 # Configure logging
 logging.basicConfig(
@@ -138,6 +138,7 @@ app.add_middleware(
 
 
 # Include routers
+app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(watchlist.router)
 app.include_router(settings_router.router)
