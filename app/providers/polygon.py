@@ -51,8 +51,16 @@ class PolygonProvider(OptionChainProvider):
                 provider="polygon"
             )
             
-        except httpx.HTTPError as e:
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                raise ProviderError(
+                    "Polygon API Access Denied (403): Your API key does not support the 'Universal Snapshot' endpoint. "
+                    "This feature requires a paid subscription (e.g., Starter or Developer plan) that includes Real-time Options data. "
+                    "Please upgrade your plan at https://polygon.io/pricing"
+                )
             raise ProviderError(f"Polygon API error: {str(e)}")
+        except httpx.HTTPError as e:
+            raise ProviderError(f"Polygon API connection error: {str(e)}")
         except Exception as e:
             raise ProviderError(f"Unexpected error: {str(e)}")
     
