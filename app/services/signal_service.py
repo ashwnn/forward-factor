@@ -2,6 +2,7 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from app.models import Signal, SignalUserDecision
 from datetime import datetime
 import hashlib
@@ -16,6 +17,7 @@ class SignalService:
         Generate unique dedupe key for a signal.
         
         Based on ticker, front/back expiry, and date.
+        Uses SHA256 for better collision resistance.
         """
         ticker = signal["ticker"]
         front_expiry = str(signal["front_expiry"])
@@ -23,7 +25,7 @@ class SignalService:
         date_str = signal["as_of_ts"].strftime("%Y-%m-%d")
         
         key_str = f"{ticker}:{front_expiry}:{back_expiry}:{date_str}"
-        return hashlib.md5(key_str.encode()).hexdigest()
+        return hashlib.sha256(key_str.encode()).hexdigest()
     
     @staticmethod
     async def create_signal(
@@ -31,7 +33,7 @@ class SignalService:
         signal_data: Dict[str, Any]
     ) -> Optional[Signal]:
         """
-        Create a new signal record.
+        Create a new signal record using INSERT OR IGNORE for atomic upsert.
         
         Args:
             db: Database session
@@ -42,40 +44,43 @@ class SignalService:
         """
         dedupe_key = SignalService.generate_dedupe_key(signal_data)
         
-        # Check for duplicate
-        result = await db.execute(
-            select(Signal).where(Signal.dedupe_key == dedupe_key)
-        )
-        existing = result.scalar_one_or_none()
+        # Use INSERT OR IGNORE for atomic duplicate check
+        # This prevents race conditions between check and insert
+        signal_values = {
+            "ticker": signal_data["ticker"],
+            "as_of_ts": signal_data["as_of_ts"],
+            "front_expiry": signal_data["front_expiry"],
+            "back_expiry": signal_data["back_expiry"],
+            "front_dte": signal_data["front_dte"],
+            "back_dte": signal_data["back_dte"],
+            "front_iv": signal_data["front_iv"],
+            "back_iv": signal_data["back_iv"],
+            "sigma_fwd": signal_data["sigma_fwd"],
+            "ff_value": signal_data["ff_value"],
+            "vol_point": signal_data["vol_point"],
+            "quality_score": signal_data.get("quality_score"),
+            "reason_codes": signal_data.get("reason_codes", []),
+            "dedupe_key": dedupe_key,
+            "underlying_price": signal_data.get("underlying_price"),
+            "provider": signal_data.get("provider")
+        }
         
-        if existing:
+        # Use SQLite's INSERT OR IGNORE via on_conflict_do_nothing
+        stmt = sqlite_insert(Signal).values(**signal_values).on_conflict_do_nothing(
+            index_elements=['dedupe_key']
+        )
+        result = await db.execute(stmt)
+        await db.commit()
+        
+        # Check if a row was inserted
+        if result.rowcount == 0:
             return None  # Already exists
         
-        # Create new signal
-        signal = Signal(
-            ticker=signal_data["ticker"],
-            as_of_ts=signal_data["as_of_ts"],
-            front_expiry=signal_data["front_expiry"],
-            back_expiry=signal_data["back_expiry"],
-            front_dte=signal_data["front_dte"],
-            back_dte=signal_data["back_dte"],
-            front_iv=signal_data["front_iv"],
-            back_iv=signal_data["back_iv"],
-            sigma_fwd=signal_data["sigma_fwd"],
-            ff_value=signal_data["ff_value"],
-            vol_point=signal_data["vol_point"],
-            quality_score=signal_data.get("quality_score"),
-            reason_codes=signal_data.get("reason_codes", []),
-            dedupe_key=dedupe_key,
-            underlying_price=signal_data.get("underlying_price"),
-            provider=signal_data.get("provider")
+        # Fetch the newly created signal
+        fetch_result = await db.execute(
+            select(Signal).where(Signal.dedupe_key == dedupe_key)
         )
-        
-        db.add(signal)
-        await db.commit()
-        await db.refresh(signal)
-        
-        return signal
+        return fetch_result.scalar_one_or_none()
     
     @staticmethod
     async def get_recent_signals(

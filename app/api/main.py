@@ -3,6 +3,10 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from app.core.database import get_db
 from app.core.config import settings
 from app.services import SignalService
@@ -16,7 +20,7 @@ from app.api.routes import auth, watchlist, settings as settings_router, signals
 
 # Configure logging
 logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper()),
+    level=getattr(logging, settings.log_level),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
@@ -24,7 +28,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Forward Factor Signal Bot API", version="1.0.0")
+
+# Attach limiter to app state and register exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.on_event("startup")
@@ -97,16 +108,22 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Exception type: {type(exc).__name__}")
     logger.error(f"Exception message: {str(exc)}", exc_info=True)
     
+    # Only add CORS headers for allowed origins (not wildcard fallback)
+    origin = request.headers.get("origin", "")
+    cors_headers = {}
+    if origin in settings.cors_origins_list:
+        cors_headers = {
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        }
+    
     return JSONResponse(
         status_code=500,
         content={
             "detail": "Internal server error",
             "error": str(exc) if settings.log_level == "DEBUG" else "Internal server error"
         },
-        headers={
-            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
-            "Access-Control-Allow-Credentials": "true",
-        }
+        headers=cors_headers
     )
 
 # Configure CORS

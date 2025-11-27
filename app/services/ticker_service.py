@@ -3,11 +3,46 @@ from typing import List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import MasterTicker, Subscription, UserSettings
-from datetime import datetime
+from datetime import datetime, timezone
+import re
+
+
+# Ticker validation pattern: 1-5 uppercase letters
+TICKER_PATTERN = re.compile(r'^[A-Z]{1,5}$')
+
+
+def validate_ticker(ticker: str) -> str:
+    """
+    Validate and normalize a ticker symbol.
+    
+    Args:
+        ticker: Ticker symbol to validate
+        
+    Returns:
+        Normalized (uppercase) ticker symbol
+        
+    Raises:
+        ValueError: If ticker format is invalid
+    """
+    if not ticker:
+        raise ValueError("Ticker symbol cannot be empty")
+    
+    normalized = ticker.upper().strip()
+    
+    if not TICKER_PATTERN.match(normalized):
+        raise ValueError(
+            f"Invalid ticker format: '{ticker}'. "
+            "Ticker must be 1-5 uppercase letters."
+        )
+    
+    return normalized
 
 
 class TickerService:
     """Service for master ticker registry management."""
+    
+    @staticmethod
+    async def update_ticker_registry(db: AsyncSession):
     
     @staticmethod
     async def update_ticker_registry(db: AsyncSession):
@@ -83,8 +118,19 @@ class TickerService:
         db: AsyncSession,
         ticker: str
     ) -> MasterTicker:
-        """Get or create master ticker record."""
-        ticker = ticker.upper()
+        """Get or create master ticker record.
+        
+        Args:
+            db: Database session
+            ticker: Ticker symbol (will be validated and normalized)
+            
+        Returns:
+            MasterTicker record
+            
+        Raises:
+            ValueError: If ticker format is invalid
+        """
+        ticker = validate_ticker(ticker)
         
         result = await db.execute(
             select(MasterTicker).where(MasterTicker.ticker == ticker)
@@ -128,5 +174,5 @@ class TickerService:
         master_ticker = result.scalar_one_or_none()
         
         if master_ticker:
-            master_ticker.last_scan_at = datetime.utcnow()
+            master_ticker.last_scan_at = datetime.now(timezone.utc)
             await db.commit()

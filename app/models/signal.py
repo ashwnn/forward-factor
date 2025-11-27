@@ -1,7 +1,6 @@
 """Signal model for storing computed Forward Factor signals."""
 from sqlalchemy import Column, String, DateTime, Integer, Float, JSON, Date
-
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.core.database import Base
 
@@ -13,7 +12,7 @@ class Signal(Base):
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     ticker = Column(String, nullable=False, index=True)
-    as_of_ts = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    as_of_ts = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     front_expiry = Column(Date, nullable=False)
     back_expiry = Column(Date, nullable=False)
     front_dte = Column(Integer, nullable=False)
@@ -39,7 +38,7 @@ class OptionChainSnapshot(Base):
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     ticker = Column(String, nullable=False, index=True)
-    as_of_ts = Column(DateTime, default=datetime.utcnow, nullable=False)
+    as_of_ts = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     provider = Column(String, nullable=False)
     underlying_price = Column(Float, nullable=True)
     raw_payload = Column(JSON, nullable=True)

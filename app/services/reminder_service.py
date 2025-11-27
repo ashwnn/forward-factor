@@ -1,8 +1,9 @@
 """Reminder service for scheduling trade reminders."""
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 from app.core.redis import get_redis
 from app.models import Signal
 
@@ -36,20 +37,27 @@ class ReminderService:
             # Calculate reminder times (using front_expiry as date)
             front_expiry_date = signal.front_expiry
             
+            # Use Eastern Time for market hours
+            eastern = ZoneInfo("America/New_York")
+            
             # 1. One day before at market open (9:30 AM ET)
-            one_day_before = datetime.combine(
+            one_day_before_local = datetime.combine(
                 front_expiry_date - timedelta(days=1),
                 datetime.min.time().replace(hour=9, minute=30)
             )
+            # Make timezone-aware and convert to UTC
+            one_day_before = one_day_before_local.replace(tzinfo=eastern).astimezone(timezone.utc)
             
             # 2. Expiry day at market open (9:30 AM ET)
-            expiry_day_open = datetime.combine(
+            expiry_day_local = datetime.combine(
                 front_expiry_date,
                 datetime.min.time().replace(hour=9, minute=30)
             )
+            # Make timezone-aware and convert to UTC
+            expiry_day_open = expiry_day_local.replace(tzinfo=eastern).astimezone(timezone.utc)
             
             # Only schedule if time is in the future
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             
             reminders = []
             

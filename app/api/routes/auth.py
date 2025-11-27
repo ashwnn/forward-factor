@@ -1,10 +1,12 @@
 """Authentication API routes."""
 from datetime import timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 import logging
 
 from app.core.database import get_db
@@ -15,6 +17,9 @@ from app.models.user import User
 
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 logger = logging.getLogger(__name__)
+
+# Rate limiter for auth endpoints
+limiter = Limiter(key_func=get_remote_address)
 
 
 # Request/Response Models
@@ -47,8 +52,10 @@ class UserResponse(BaseModel):
 
 
 @router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit(settings.rate_limit_register)
 async def register(
-    request: RegisterRequest,
+    request: Request,
+    register_request: RegisterRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -56,27 +63,27 @@ async def register(
     
     Returns an access token upon successful registration.
     """
-    logger.info(f"Registration request received for email: {request.email}")
+    logger.info(f"Registration request received for email: {register_request.email}")
     
     # Check if registration is enabled
     if not settings.registration_enabled:
-        logger.warning(f"Registration attempt rejected - registrations disabled: {request.email}")
+        logger.warning(f"Registration attempt rejected - registrations disabled: {register_request.email}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="New user registrations are currently disabled"
         )
     
     # Validate password strength
-    if len(request.password) < 8:
-        logger.warning(f"Registration failed - weak password: {request.email}")
+    if len(register_request.password) < 8:
+        logger.warning(f"Registration failed - weak password: {register_request.email}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password must be at least 8 characters long"
         )
     
     # Register user
-    logger.debug(f"Calling AuthService.register_user for: {request.email}")
-    user = await AuthService.register_user(request.email, request.password, db)
+    logger.debug(f"Calling AuthService.register_user for: {register_request.email}")
+    user = await AuthService.register_user(register_request.email, register_request.password, db)
     
     # Create access token
     logger.debug(f"Creating access token for user: {user.id}")
@@ -85,7 +92,7 @@ async def register(
         expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
     )
     
-    logger.info(f"✓ User registered successfully: {request.email} (ID: {user.id})")
+    logger.info(f"✓ User registered successfully: {register_request.email} (ID: {user.id})")
     
     return {
         "access_token": access_token,
@@ -99,7 +106,9 @@ async def register(
 
 
 @router.post("/login", response_model=LoginResponse)
+@limiter.limit(settings.rate_limit_login)
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):

@@ -2,7 +2,7 @@
 import logging
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from telegram import Bot
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
@@ -127,7 +127,7 @@ Original Signal Details:
         """Check for and process due reminders."""
         try:
             redis = await self._get_redis()
-            now = datetime.utcnow().timestamp()
+            now = datetime.now(timezone.utc).timestamp()
             
             # Get reminders due now (score <= now)
             due_reminders = await redis.zrangebyscore(

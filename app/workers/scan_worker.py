@@ -7,7 +7,7 @@ from app.core.redis import get_redis
 from app.providers.polygon import PolygonProvider
 from app.services import TickerService, SignalService, UserService, SubscriptionService, stability_tracker
 from app.services.signal_engine import compute_signals
-from datetime import datetime
+from datetime import datetime, timezone
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class ScanWorker:
             
             # Cache snapshot
             redis = await self._get_redis()
-            cache_key = f"chain:{ticker}:{datetime.utcnow().strftime('%Y%m%d%H%M')}"
+            cache_key = f"chain:{ticker}:{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}"
             await redis.setex(cache_key, 300, "cached")  # 5 min TTL
             
             # Get all subscribers for this ticker

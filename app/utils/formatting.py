@@ -1,5 +1,5 @@
 """Telegram message formatting utilities."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 
@@ -53,7 +53,7 @@ Same strike (ATM or near)
 ⚠️ Note: Wealthsimple spread support varies by account.
 Close before front expiry.
 
-🕐 Signal Time: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+🕐 Signal Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
     """.strip()
     
     return message

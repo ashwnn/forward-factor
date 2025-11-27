@@ -1,7 +1,8 @@
 """Telegram bot main entry point."""
 import logging
+import traceback
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from app.core.config import settings
 from app.bot.handlers.start import start_command, help_command
 from app.bot.handlers.watchlist import add_command, remove_command, list_command
@@ -17,12 +18,52 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle errors globally for the Telegram bot.
+    
+    Logs the error and notifies the developer if configured.
+    """
+    logger.error("Exception while handling an update:")
+    
+    # Format the traceback
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_string = "".join(tb_list)
+    
+    # Log the full error with traceback
+    logger.error(f"Exception: {context.error}")
+    logger.error(f"Traceback:\n{tb_string}")
+    
+    # Log update info if available
+    if update:
+        if isinstance(update, Update):
+            logger.error(f"Update ID: {update.update_id}")
+            if update.effective_user:
+                logger.error(f"User: {update.effective_user.id} (@{update.effective_user.username})")
+            if update.effective_chat:
+                logger.error(f"Chat: {update.effective_chat.id}")
+            if update.effective_message:
+                logger.error(f"Message: {update.effective_message.text}")
+    
+    # Send a message to the user if possible
+    if update and isinstance(update, Update) and update.effective_message:
+        try:
+            await update.effective_message.reply_text(
+                "Sorry, an error occurred while processing your request. "
+                "Please try again later."
+            )
+        except Exception as e:
+            logger.error(f"Failed to send error message to user: {e}")
+
+
 def main():
     """Start the Telegram bot."""
     logger.info("Starting Telegram bot...")
     
     # Create application
     application = Application.builder().token(settings.telegram_bot_token).build()
+    
+    # Register error handler
+    application.add_error_handler(error_handler)
     
     # Register command handlers
     application.add_handler(CommandHandler("start", start_command))

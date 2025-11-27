@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.models.user import User
 from app.services.subscription_service import SubscriptionService
+from app.services.ticker_service import validate_ticker
 
 router = APIRouter(prefix="/api/watchlist", tags=["watchlist"])
 
@@ -57,13 +58,13 @@ async def add_ticker(
     
     Requires authentication.
     """
-    # Normalize ticker to uppercase
-    ticker = request.ticker.upper().strip()
-    
-    if not ticker:
+    # Validate and normalize ticker
+    try:
+        ticker = validate_ticker(request.ticker)
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ticker cannot be empty"
+            detail=str(e)
         )
     
     # Add subscription

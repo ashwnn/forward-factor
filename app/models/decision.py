@@ -1,8 +1,7 @@
 """Signal user decision model."""
 from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, Float
-
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from app.core.database import Base
 
@@ -16,7 +15,7 @@ class SignalUserDecision(Base):
     signal_id = Column(String, ForeignKey("signals.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     decision = Column(String, nullable=False)  # placed, ignored, expired, error
-    decision_ts = Column(DateTime, default=datetime.utcnow, nullable=False)
+    decision_ts = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     decision_metadata = Column(JSON, default=dict)
     entry_price = Column(Float, nullable=True)
     exit_price = Column(Float, nullable=True)

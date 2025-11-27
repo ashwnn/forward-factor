@@ -1,6 +1,6 @@
 """Authentication utilities for JWT token handling and password hashing."""
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -73,11 +73,12 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         Encoded JWT token string
     """
     to_encode = data.copy()
+    now = datetime.now(timezone.utc)
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = now + timedelta(minutes=settings.access_token_expire_minutes)
     
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
@@ -162,18 +163,14 @@ async def get_current_active_user(
     """
     FastAPI dependency to get the current active user.
     
+    Note: This is now just an alias for get_current_user since the active
+    check is already done there. Kept for backward compatibility.
+    
     Args:
         current_user: User from get_current_user dependency
         
     Returns:
         Current active User object
-        
-    Raises:
-        HTTPException: If user is not active
     """
-    if current_user.status != "active":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
+    # Active check already done in get_current_user
     return current_user

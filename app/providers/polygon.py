@@ -1,10 +1,21 @@
 """Polygon.io option chain provider implementation."""
 import httpx
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List, Optional
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log
+)
+import logging
 from app.providers import OptionChainProvider, ProviderError
 from app.providers.models import ChainSnapshot, Expiry, Contract
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class PolygonProvider(OptionChainProvider):
@@ -16,11 +27,32 @@ class PolygonProvider(OptionChainProvider):
         self.api_key = api_key or settings.polygon_api_key
         self.client = httpx.AsyncClient(timeout=30.0)
     
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING)
+    )
+    async def _make_request(self, url: str, params: dict) -> dict:
+        """Make HTTP request with retry logic for transient failures.
+        
+        Retries up to 3 times with exponential backoff for:
+        - Timeout errors
+        - Connection errors
+        
+        Does NOT retry for:
+        - HTTP errors (4xx, 5xx) - those need different handling
+        """
+        response = await self.client.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+    
     async def get_chain_snapshot(self, ticker: str) -> ChainSnapshot:
         """
         Fetch option chain snapshot from Polygon.io.
         
         Uses the options chain snapshot endpoint to get all contracts.
+        Includes retry logic for transient network failures.
         """
         try:
             # Get underlying price first
@@ -30,9 +62,7 @@ class PolygonProvider(OptionChainProvider):
             url = f"{self.BASE_URL}/v3/snapshot/options/{ticker}"
             params = {"apiKey": self.api_key}
             
-            response = await self.client.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
+            data = await self._make_request(url, params)
             
             if data.get("status") != "OK":
                 raise ProviderError(f"Polygon API returned status: {data.get('status')}")
@@ -45,7 +75,7 @@ class PolygonProvider(OptionChainProvider):
             
             return ChainSnapshot(
                 ticker=ticker,
-                as_of=datetime.utcnow(),
+                as_of=datetime.now(timezone.utc),
                 underlying_price=underlying_price,
                 expiries=expiries,
                 provider="polygon"
@@ -58,14 +88,26 @@ class PolygonProvider(OptionChainProvider):
                     "This feature requires a paid subscription (e.g., Starter or Developer plan) that includes Real-time Options data. "
                     "Please upgrade your plan at https://polygon.io/pricing"
                 )
+            elif e.response.status_code == 429:
+                raise ProviderError(
+                    "Polygon API rate limit exceeded (429). Please wait before making more requests."
+                )
             raise ProviderError(f"Polygon API error: {str(e)}")
+        except httpx.TimeoutException as e:
+            raise ProviderError(f"Polygon API timeout after retries: {str(e)}")
         except httpx.HTTPError as e:
             raise ProviderError(f"Polygon API connection error: {str(e)}")
         except Exception as e:
             raise ProviderError(f"Unexpected error: {str(e)}")
     
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING)
+    )
     async def _get_underlying_price(self, ticker: str) -> float:
-        """Get current underlying stock price."""
+        """Get current underlying stock price with retry logic."""
         url = f"{self.BASE_URL}/v2/aggs/ticker/{ticker}/prev"
         params = {"apiKey": self.api_key}
         

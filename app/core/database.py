@@ -4,6 +4,7 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 import logging
 import re
+from typing import AsyncGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,9 @@ engine_args = {
     "pool_pre_ping": True,
 }
 
-if "sqlite" not in settings.database_url:
+# Only add pool settings for non-SQLite databases
+is_sqlite = "sqlite" in settings.database_url
+if not is_sqlite:
     engine_args["pool_size"] = 10
     engine_args["max_overflow"] = 20
 
@@ -30,7 +33,10 @@ engine = create_async_engine(
     **engine_args
 )
 
-logger.info(f"Database engine created with pool_size=10, max_overflow=20")
+if is_sqlite:
+    logger.info("Database engine created (SQLite - no connection pooling)")
+else:
+    logger.info("Database engine created with pool_size=10, max_overflow=20")
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(
@@ -47,20 +53,23 @@ class Base(DeclarativeBase):
     pass
 
 
-async def get_db() -> AsyncSession:
-    """Dependency for getting database sessions."""
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency for getting database sessions.
+    
+    NOTE: This dependency does NOT auto-commit. Services must explicitly
+    call await session.commit() when needed. This provides clearer
+    transaction boundaries and avoids double-commit issues.
+    """
     logger.debug("Creating new database session")
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            await session.commit()
-            logger.debug("Database session committed successfully")
         except Exception as e:
             await session.rollback()
             logger.error(f"Database session rolled back due to error: {str(e)}")
             raise
         finally:
-            await session.close()
             logger.debug("Database session closed")
 
 

@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from app.services import UserService, SignalService
 from app.core.database import AsyncSessionLocal
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_id=user.id,
                 decision=action,
                 metadata={
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "via": "telegram_callback"
                 }
             )
