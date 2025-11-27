@@ -234,50 +234,6 @@ Apply to: `api`, `bot`, `scheduler`, `worker`, `reminder-worker`
 #### 3.3 No Code Changes Required
 Since we're using SQLAlchemy ORM, **no application code changes** are needed. The ORM abstracts the database layer.
 
-### Phase 4: Data Migration Strategy
-
-#### Option A: Fresh Start (Recommended for Development)
-- Start with empty TimescaleDB
-- Run Alembic migrations from scratch
-- Users re-subscribe to tickers
-- **Pros:** Clean, no migration complexity
-- **Cons:** Lose historical signals
-
-#### Option B: SQLite → PostgreSQL Data Migration (Production)
-1. **Export SQLite Data:**
-   ```python
-   # Create script: scripts/export_sqlite_data.py
-   import sqlite3
-   import json
-   
-   conn = sqlite3.connect('./data/ffbot.db')
-   cursor = conn.cursor()
-   
-   # Export each table to JSON
-   for table in ['users', 'user_settings', 'subscriptions', ...]:
-       cursor.execute(f"SELECT * FROM {table}")
-       rows = cursor.fetchall()
-       # ... export to JSON file
-   ```
-
-2. **Import into TimescaleDB:**
-   ```python
-   # Create script: scripts/import_to_timescale.py
-   from app.core.database import get_async_session
-   from app.models import *
-   import json
-   
-   async def import_data():
-       async with get_async_session() as session:
-           # Read JSON files and insert
-   ```
-
-3. **Validation Script:**
-   ```python
-   # Verify row counts match
-   # Verify sample data integrity
-   ```
-
 ### Phase 5: Testing Strategy
 
 #### 5.1 Unit Tests
