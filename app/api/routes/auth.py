@@ -36,9 +36,7 @@ class LoginResponse(BaseModel):
     user: dict
 
 
-class LinkTelegramRequest(BaseModel):
-    """Request to link Telegram username."""
-    telegram_username: str
+
 
 
 class UserResponse(BaseModel):
@@ -47,6 +45,7 @@ class UserResponse(BaseModel):
     email: Optional[str]
     telegram_chat_id: Optional[str]
     telegram_username: Optional[str]
+    link_code: Optional[str]
     created_at: str
     status: str
 
@@ -100,7 +99,8 @@ async def register(
         "user": {
             "id": str(user.id),
             "email": user.email,
-            "created_at": user.created_at.isoformat()
+            "created_at": user.created_at.isoformat(),
+            "link_code": user.link_code
         }
     }
 
@@ -132,6 +132,9 @@ async def login(
         expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
     )
     
+    # Ensure link code exists
+    link_code = await AuthService.ensure_link_code(user, db)
+    
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -139,35 +142,9 @@ async def login(
             "id": str(user.id),
             "email": user.email,
             "telegram_username": user.telegram_username,
-            "created_at": user.created_at.isoformat()
+            "created_at": user.created_at.isoformat(),
+            "link_code": link_code
         }
-    }
-
-
-@router.post("/link-telegram", response_model=UserResponse)
-async def link_telegram(
-    request: LinkTelegramRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Link a Telegram username to the current user's account.
-    
-    Requires authentication.
-    """
-    user = await AuthService.link_telegram_username(
-        str(current_user.id),
-        request.telegram_username,
-        db
-    )
-    
-    return {
-        "id": str(user.id),
-        "email": user.email,
-        "telegram_chat_id": user.telegram_chat_id,
-        "telegram_username": user.telegram_username,
-        "created_at": user.created_at.isoformat(),
-        "status": user.status
     }
 
 
@@ -191,6 +168,7 @@ async def unlink_telegram(
         "email": user.email,
         "telegram_chat_id": user.telegram_chat_id,
         "telegram_username": user.telegram_username,
+        "link_code": user.link_code,
         "created_at": user.created_at.isoformat(),
         "status": user.status
     }
@@ -198,18 +176,23 @@ async def unlink_telegram(
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get current authenticated user information.
     
     Requires authentication.
     """
+    # Ensure link code exists
+    link_code = await AuthService.ensure_link_code(current_user, db)
+    
     return {
         "id": str(current_user.id),
         "email": current_user.email,
         "telegram_chat_id": current_user.telegram_chat_id,
         "telegram_username": current_user.telegram_username,
+        "link_code": link_code,
         "created_at": current_user.created_at.isoformat(),
         "status": current_user.status
     }

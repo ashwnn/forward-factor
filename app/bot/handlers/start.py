@@ -2,7 +2,7 @@
 import logging
 from telegram import Update
 from telegram.ext import ContextTypes
-from app.services import UserService
+from app.services import UserService, AuthService
 from app.core.database import AsyncSessionLocal
 from app.core.config import settings
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Handle /start command.
-    Creates user account if doesn't exist.
+    Links user account if code provided.
     """
     try:
         chat_id = str(update.effective_chat.id)
@@ -22,20 +22,39 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Check if user already exists
             user = await UserService.get_user_by_chat_id(db, chat_id)
             
-            if not user:
-                # Check for invite code
-                if not context.args or context.args[0] != settings.invite_code:
-                    await update.message.reply_text(
-                        "🔒 Access Restricted\n\n"
-                        "Please provide a valid invite code to start using this bot.\n"
-                        "Usage: /start <invite_code>"
-                    )
-                    return
-                
-                # Create user if code is valid
-                user = await UserService.get_or_create_user(db, chat_id, telegram_username)
+            if user:
+                await send_welcome_message(update)
+                return
             
-            welcome_message = f"""
+            # Not linked. Check for link code in args
+            if context.args and len(context.args) > 0:
+                link_code = context.args[0]
+                user = await AuthService.verify_link_code(link_code, chat_id, telegram_username, db)
+                
+                if user:
+                    await update.message.reply_text("✅ Account successfully linked!")
+                    await send_welcome_message(update)
+                    return
+                else:
+                    await update.message.reply_text("❌ Invalid link code. Please check your settings on the web dashboard.")
+                    return
+            
+            # No code or invalid flow
+            await update.message.reply_text(
+                "⚠️ You must register on the web application before using the Telegram bot.\n\n"
+                f"Please log in at {settings.frontend_url}/login and obtain your personal link code from Settings.\n\n"
+                "Once you have the code, send it here or click the link in the dashboard."
+            )
+    except Exception as e:
+        logger.error(f"Error in start_command: {e}", exc_info=True)
+        await update.message.reply_text(
+            "❌ An error occurred processing your request. Please try again later."
+        )
+
+
+async def send_welcome_message(update: Update):
+    """Send the welcome message."""
+    welcome_message = f"""
 Welcome to Forward Factor Signal Bot!
 
 I'll help you find calendar spread opportunities based on Forward Factor analysis.
@@ -49,14 +68,9 @@ Commands:
 
 Get started by adding some tickers to your watchlist!
 Example: /add SPY
-            """.strip()
-            
-            await update.message.reply_text(welcome_message)
-    except Exception as e:
-        logger.error(f"Error in start_command: {e}", exc_info=True)
-        await update.message.reply_text(
-            "❌ An error occurred processing your request. Please try again later."
-        )
+    """.strip()
+    
+    await update.message.reply_text(welcome_message)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

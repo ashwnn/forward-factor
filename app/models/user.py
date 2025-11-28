@@ -31,6 +31,7 @@ class User(Base):
     telegram_username = Column(String, nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     status = Column(String, default="active", nullable=False)
+    link_code = Column(String, unique=True, nullable=True, index=True)
     
     # Relationships
     settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")

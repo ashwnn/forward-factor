@@ -5,6 +5,7 @@ from sqlalchemy import select
 from fastapi import HTTPException, status
 import logging
 
+import secrets
 from app.models.user import User, UserSettings
 from app.core.auth import hash_password, verify_password
 
@@ -13,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 class AuthService:
     """Service for authentication operations."""
+    
+    @staticmethod
+    def generate_link_code() -> str:
+        """Generate a unique link code."""
+        return secrets.token_hex(4)
     
     @staticmethod
     async def register_user(email: str, password: str, db: AsyncSession) -> User:
@@ -50,7 +56,8 @@ class AuthService:
             user = User(
                 email=email,
                 password_hash=hash_password(password),
-                status="active"
+                status="active",
+                link_code=AuthService.generate_link_code()
             )
             
             db.add(user)
@@ -189,6 +196,57 @@ class AuthService:
         
         return user
     
+    @staticmethod
+    async def verify_link_code(link_code: str, telegram_chat_id: str, telegram_username: str, db: AsyncSession) -> Optional[User]:
+        """
+        Verify link code and link Telegram account.
+        
+        Args:
+            link_code: The link code provided by the user
+            telegram_chat_id: The Telegram chat ID to link
+            telegram_username: The Telegram username (optional)
+            db: Database session
+            
+        Returns:
+            User object if successful, None otherwise
+        """
+        # Find user by link code
+        result = await db.execute(select(User).where(User.link_code == link_code))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return None
+            
+        # Link the account
+        user.telegram_chat_id = telegram_chat_id
+        if telegram_username:
+            user.telegram_username = telegram_username
+            
+        await db.commit()
+        await db.refresh(user)
+        return user
+
+    @staticmethod
+    async def ensure_link_code(user: User, db: AsyncSession) -> str:
+        """
+        Ensure user has a link code. Generates one if missing.
+        
+        Args:
+            user: User object
+            db: Database session
+            
+        Returns:
+            The link code
+        """
+        if user.link_code:
+            return user.link_code
+            
+        user.link_code = AuthService.generate_link_code()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return user.link_code
+
     @staticmethod
     async def unlink_telegram_username(user_id: str, db: AsyncSession) -> User:
         """

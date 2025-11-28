@@ -8,7 +8,6 @@ import DashboardLayout from '../dashboard/layout';
 export default function SettingsPage() {
     const [settings, setSettings] = useState<Settings | null>(null);
     const [user, setUser] = useState<any>(null);
-    const [telegramUsername, setTelegramUsername] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -53,23 +52,6 @@ export default function SettingsPage() {
             setError('Failed to save settings');
         } finally {
             setSaving(false);
-        }
-    };
-
-    const linkTelegram = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setSuccess('');
-
-        try {
-            await apiClient.post('/api/auth/link-telegram', {
-                telegram_username: telegramUsername,
-            });
-            setSuccess('Telegram account linked successfully!');
-            setTelegramUsername('');
-            await fetchUser(); // Refresh user data
-        } catch (err: any) {
-            setError('Failed to link Telegram account');
         }
     };
 
@@ -125,35 +107,63 @@ export default function SettingsPage() {
                 {/* Telegram Account Section */}
                 <div className="bg-white shadow rounded-lg p-6 mb-6">
                     <h2 className="text-xl font-semibold mb-4">Telegram Account</h2>
-                    {user?.telegram_username ? (
+                    {user?.telegram_chat_id ? (
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-600 mb-1">Connected Account</p>
-                                <p className="text-lg font-medium text-gray-900">@{user.telegram_username}</p>
+                                <p className="text-sm text-gray-600 mb-1">Status</p>
+                                <p className="text-lg font-medium text-green-600 flex items-center">
+                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                                    Connected
+                                    {user.telegram_username && <span className="text-gray-500 ml-2">(@{user.telegram_username})</span>}
+                                </p>
                             </div>
                             <button
                                 onClick={unlinkTelegram}
-                                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                             >
                                 Unlink
                             </button>
                         </div>
                     ) : (
-                        <form onSubmit={linkTelegram} className="flex gap-4">
-                            <input
-                                type="text"
-                                value={telegramUsername}
-                                onChange={(e) => setTelegramUsername(e.target.value)}
-                                placeholder="Enter Telegram username (without @)"
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                            <button
-                                type="submit"
-                                className="px-6 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800"
-                            >
-                                Link
-                            </button>
-                        </form>
+                        <div className="space-y-4">
+                            <p className="text-gray-600">
+                                Link your Telegram account to receive real-time signals and manage your watchlist.
+                            </p>
+
+                            <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                                <p className="text-sm text-gray-500 mb-2">Your Link Code</p>
+                                <div className="flex items-center gap-2">
+                                    <code className="text-2xl font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded">
+                                        {user?.link_code || 'Loading...'}
+                                    </code>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(user?.link_code || '');
+                                            setSuccess('Link code copied to clipboard!');
+                                            setTimeout(() => setSuccess(''), 3000);
+                                        }}
+                                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <a
+                                    href={`https://t.me/ForwardFactorBot?start=${user?.link_code}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex justify-center items-center px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                >
+                                    Open in Telegram
+                                </a>
+                            </div>
+
+                            <p className="text-xs text-gray-500 mt-2">
+                                Click the button above or send the code manually to <a href="https://t.me/ForwardFactorBot" className="text-blue-600 hover:underline">@ForwardFactorBot</a>
+                            </p>
+                        </div>
                     )}
                 </div>
 
