@@ -166,16 +166,30 @@ class TestLinkCode:
         mock_db.commit.assert_called_once()
 
     async def test_verify_link_code_success(self, mock_db, mock_user):
-        """✅ Valid code → link account."""
+        """✅ Valid code → link account by creating TelegramChat."""
+        # Mock finding user by link code
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_user
-        mock_db.execute.return_value = mock_result
         
-        user = await AuthService.verify_link_code("valid-code", "chat-123", "tg_user", mock_db)
+        # Mock checking if chat already exists (should return None for new chat)
+        mock_existing_check = MagicMock()
+        mock_existing_check.scalar_one_or_none.return_value = None
+        
+        # Setup execute to return different results for different queries
+        mock_db.execute.side_effect = [mock_result, mock_existing_check]
+        
+        user = await AuthService.verify_link_code(
+            "valid-code", 
+            "chat-123", 
+            "John",
+            "Doe",
+            "johndoe", 
+            mock_db
+        )
         
         assert user == mock_user
-        assert user.telegram_chat_id == "chat-123"
-        assert user.telegram_username == "tg_user"
+        # Verify TelegramChat was added to db
+        mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
 
     async def test_verify_link_code_invalid(self, mock_db):
@@ -184,7 +198,14 @@ class TestLinkCode:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
         
-        user = await AuthService.verify_link_code("invalid-code", "chat-123", "tg_user", mock_db)
+        user = await AuthService.verify_link_code(
+            "invalid-code", 
+            "chat-123", 
+            "John",
+            "Doe",
+            "johndoe", 
+            mock_db
+        )
         
         assert user is None
 

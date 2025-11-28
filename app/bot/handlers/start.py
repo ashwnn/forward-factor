@@ -15,7 +15,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     try:
         chat_id = str(update.effective_chat.id)
-        telegram_username = update.effective_user.username  # Get username from Telegram
+        # Extract user information from Telegram
+        telegram_user = update.effective_user
+        first_name = telegram_user.first_name  # Always available
+        last_name = telegram_user.last_name    # Optional
+        telegram_username = telegram_user.username  # Optional
         
         async with AsyncSessionLocal() as db:
             # Check if user already exists
@@ -28,7 +32,14 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Not linked. Check for link code in args
             if context.args and len(context.args) > 0:
                 link_code = context.args[0]
-                user = await AuthService.verify_link_code(link_code, chat_id, telegram_username, db)
+                user = await AuthService.verify_link_code(
+                    link_code, 
+                    chat_id, 
+                    first_name,
+                    last_name,
+                    telegram_username, 
+                    db
+                )
                 
                 if user:
                     await update.message.reply_text("✅ Account successfully linked!")

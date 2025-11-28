@@ -110,30 +110,52 @@ class AuthService:
         return user
     
     @staticmethod
-    async def verify_link_code(link_code: str, telegram_chat_id: str, telegram_username: str, db: AsyncSession) -> Optional[User]:
+    async def verify_link_code(link_code: str, telegram_chat_id: str, first_name: str, last_name: Optional[str], telegram_username: Optional[str], db: AsyncSession) -> Optional[User]:
         """
-        Verify link code and link Telegram account.
+        Verify link code and link Telegram chat to account.
         
         Args:
             link_code: The link code provided by the user
             telegram_chat_id: The Telegram chat ID to link
+            first_name: Telegram user's first name (required)
+            last_name: Telegram user's last name (optional)
             telegram_username: The Telegram username (optional)
             db: Database session
             
         Returns:
             User object if successful, None otherwise
         """
+        from app.models.telegram_chat import TelegramChat
+        
         # Find user by link code
         result = await db.execute(select(User).where(User.link_code == link_code))
         user = result.scalar_one_or_none()
         
         if not user:
             return None
-            
-        # Link the account
-        user.telegram_chat_id = telegram_chat_id
-        if telegram_username:
-            user.telegram_username = telegram_username
+        
+        # Check if this chat_id is already linked to this or another user
+        result = await db.execute(
+            select(TelegramChat).where(TelegramChat.chat_id == telegram_chat_id)
+        )
+        existing_chat = result.scalar_one_or_none()
+        
+        if existing_chat:
+            # Chat already linked - just return the user if it's the same user
+            if existing_chat.user_id == user.id:
+                return user
+            # Chat linked to different user - return None (can't link to multiple accounts)
+            return None
+        
+        # Create new telegram chat entry
+        telegram_chat = TelegramChat(
+            user_id=user.id,
+            chat_id=telegram_chat_id,
+            first_name=first_name,
+            last_name=last_name,
+            username=telegram_username
+        )
+        db.add(telegram_chat)
             
         await db.commit()
         await db.refresh(user)

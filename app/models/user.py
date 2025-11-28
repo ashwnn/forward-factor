@@ -25,10 +25,8 @@ class User(Base):
     __tablename__ = "users"
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    telegram_chat_id = Column(String, unique=True, nullable=True, index=True)
     email = Column(String, unique=True, nullable=True, index=True)
     password_hash = Column(String, nullable=True)
-    telegram_username = Column(String, nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     status = Column(String, default="active", nullable=False)
     link_code = Column(String, unique=True, nullable=True, index=True)
@@ -37,6 +35,7 @@ class User(Base):
     settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
     subscriptions = relationship("Subscription", back_populates="user", cascade="all, delete-orphan")
     decisions = relationship("SignalUserDecision", back_populates="user", cascade="all, delete-orphan")
+    telegram_chats = relationship("TelegramChat", back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSettings(Base):

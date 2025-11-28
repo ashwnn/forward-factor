@@ -33,8 +33,6 @@ def mock_user():
     user.email = "test@example.com"
     user.password_hash = "hashed_password"
     user.created_at = datetime(2025, 1, 1, 12, 0, 0)
-    user.telegram_username = None
-    user.telegram_chat_id = None
     user.status = "active"
     return user
 
@@ -137,7 +135,11 @@ class TestLogin:
         """✅ Valid credentials → 200 + access token."""
         mock_auth_service.authenticate_user = AsyncMock(return_value=mock_user)
         mock_auth_service.ensure_link_code = AsyncMock(return_value="code-123")
-        mock_user.telegram_username = "testuser"
+        
+        # Mock telegram_chats query result (empty list for this test)
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
         
         from app.api.routes.auth import login
         from fastapi.security import OAuth2PasswordRequestForm
@@ -151,7 +153,6 @@ class TestLogin:
         response = await login(request_obj, form_data, mock_db)
         
         assert response["access_token"] == "mock-token"
-        assert response["user"]["telegram_username"] == "testuser"
         assert response["user"]["link_code"] == "code-123"
     
     async def test_invalid_credentials(self, mock_db, mock_auth_service):
@@ -184,14 +185,13 @@ class TestTelegramLink:
     async def test_unlink_telegram(self, mock_db, mock_auth_service, mock_user):
         """✅ Unlinks telegram account."""
         updated_user = mock_user
-        updated_user.telegram_username = None
         mock_auth_service.unlink_telegram_username = AsyncMock(return_value=updated_user)
         
         from app.api.routes.auth import unlink_telegram
         
         response = await unlink_telegram(mock_user, mock_db)
         
-        assert response["telegram_username"] is None
+        # Just verify the service was called
         mock_auth_service.unlink_telegram_username.assert_called_once()
 
 
@@ -209,6 +209,11 @@ class TestGetMe:
         mock_user.link_code = "code-123"
         mock_auth_service.ensure_link_code = AsyncMock(return_value="code-123")
         
+        # Mock telegram_chats query result (empty list for this test)
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
+        
         from app.api.routes.auth import get_current_user_info
         
         response = await get_current_user_info(mock_user, mock_db)
@@ -216,3 +221,4 @@ class TestGetMe:
         assert response["email"] == mock_user.email
         assert response["id"] == mock_user.id
         assert response["link_code"] == "code-123"
+        assert response["telegram_chats"] == []

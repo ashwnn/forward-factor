@@ -38,13 +38,20 @@ class LoginResponse(BaseModel):
 
 
 
+class TelegramChatInfo(BaseModel):
+    """Telegram chat information."""
+    chat_id: str
+    first_name: str
+    last_name: Optional[str]
+    username: Optional[str]
+    linked_at: str
+
 
 class UserResponse(BaseModel):
     """User information response."""
     id: str
     email: Optional[str]
-    telegram_chat_id: Optional[str]
-    telegram_username: Optional[str]
+    telegram_chats: list[TelegramChatInfo] = []
     link_code: Optional[str]
     created_at: str
     status: str
@@ -184,14 +191,33 @@ async def get_current_user_info(
     
     Requires authentication.
     """
+    from app.models.telegram_chat import TelegramChat
+    from sqlalchemy import select
+    
     # Ensure link code exists
     link_code = await AuthService.ensure_link_code(current_user, db)
+    
+    # Fetch all telegram chats for this user
+    result = await db.execute(
+        select(TelegramChat)
+        .where(TelegramChat.user_id == current_user.id)
+        .order_by(TelegramChat.linked_at.desc())
+    )
+    telegram_chats = result.scalars().all()
     
     return {
         "id": str(current_user.id),
         "email": current_user.email,
-        "telegram_chat_id": current_user.telegram_chat_id,
-        "telegram_username": current_user.telegram_username,
+        "telegram_chats": [
+            {
+                "chat_id": chat.chat_id,
+                "first_name": chat.first_name,
+                "last_name": chat.last_name,
+                "username": chat.username,
+                "linked_at": chat.linked_at.isoformat()
+            }
+            for chat in telegram_chats
+        ],
         "link_code": link_code,
         "created_at": current_user.created_at.isoformat(),
         "status": current_user.status

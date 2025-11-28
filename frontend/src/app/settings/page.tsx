@@ -108,120 +108,96 @@ export default function SettingsPage() {
                 <div className="bg-white shadow rounded-lg p-6 mb-6">
                     <h2 className="text-xl font-semibold mb-4">Telegram Bot Connection</h2>
 
-                    {user?.telegram_chat_id ? (
-                        <div className="space-y-4">
-                            {/* Connected Status */}
-                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="flex-shrink-0">
-                                            <svg className="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-green-800">Bot Connected</p>
-                                            {user.telegram_username && (
-                                                <p className="text-sm text-green-600">@{user.telegram_username}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={unlinkTelegram}
-                                        className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
-                                    >
-                                        Disconnect
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Bot Features */}
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <h3 className="text-sm font-semibold text-blue-900 mb-2">What you can do with the bot:</h3>
-                                <ul className="text-sm text-blue-800 space-y-1">
-                                    <li>• Receive real-time signal notifications</li>
-                                    <li>• Manage your watchlist on-the-go</li>
-                                    <li>• View your trade history</li>
-                                    <li>• Track signal decisions</li>
-                                </ul>
-                            </div>
+                    {/* Link Key - Always Shown */}
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Your Link Key
+                        </label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="password"
+                                value={user?.link_code || ''}
+                                readOnly
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm"
+                                placeholder="••••••••••••••••"
+                            />
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(user?.link_code || '');
+                                    setSuccess('Link key copied to clipboard!');
+                                    setTimeout(() => setSuccess(''), 2000);
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                title="Copy link key"
+                            >
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                Copy
+                            </button>
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {/* Not Connected Status */}
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                <div className="flex items-start space-x-3">
-                                    <svg className="h-6 w-6 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-medium text-yellow-800">Bot Not Connected</p>
-                                        <p className="text-sm text-yellow-700 mt-1">Use your unique link key to connect your Telegram account automatically</p>
-                                    </div>
-                                </div>
-                            </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Use this key with <code className="bg-gray-100 px-1 rounded">/start &lt;key&gt;</code> in Telegram to link chats
+                        </p>
+                    </div>
 
-                            {/* Instructions */}
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                <h3 className="text-sm font-semibold text-gray-900 mb-3">How to connect your Telegram account:</h3>
-                                <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                                    <li>Copy your unique 16-character link key below</li>
-                                    <li>Open the Telegram bot (click "Open Telegram Bot" button or search for it)</li>
-                                    <li>Send the command: <span className="font-mono bg-gray-100 px-1 rounded">/start &lt;your-link-key&gt;</span></li>
-                                    <li>Your Telegram chat will be automatically linked to your account!</li>
-                                </ol>
-                                <p className="text-xs text-gray-600 mt-3">
-                                    💡 <strong>Tip:</strong> You can link multiple Telegram chats using the same key. Each chat will receive notifications for this account.
+                    {/* Connected Chats */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Connected Chats {user?.telegram_chats?.length > 0 && `(${user.telegram_chats.length})`}
+                        </label>
+
+                        {user?.telegram_chats && user.telegram_chats.length > 0 ? (
+                            <div className="border border-gray-300 rounded-md divide-y divide-gray-200">
+                                {user.telegram_chats.map((chat: any, index: number) => {
+                                    // Build display name: "FirstName LastName" or "@username" or "Chat ID"
+                                    const displayName = chat.first_name
+                                        ? `${chat.first_name}${chat.last_name ? ' ' + chat.last_name : ''}`
+                                        : chat.username
+                                            ? `@${chat.username}`
+                                            : `Chat ${chat.chat_id.slice(-8)}`;
+
+                                    return (
+                                        <div key={chat.chat_id} className="px-4 py-3 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <svg className="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-900">
+                                                                {displayName}
+                                                            </p>
+                                                            {chat.username && chat.first_name && (
+                                                                <p className="text-xs text-gray-500">
+                                                                    @{chat.username}
+                                                                </p>
+                                                            )}
+                                                            <p className="text-xs text-gray-500">
+                                                                Linked on {new Date(chat.linked_at).toLocaleDateString()} at {new Date(chat.linked_at).toLocaleTimeString()}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-xs text-gray-400 font-mono">ID: {chat.chat_id.slice(-8)}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="border border-gray-200 rounded-md px-4 py-8 text-center">
+                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <p className="mt-2 text-sm text-gray-500">No chats connected yet</p>
+                                <p className="mt-1 text-xs text-gray-400">
+                                    Copy your link key above and use <code className="bg-gray-100 px-1 rounded">/start &lt;key&gt;</code> in Telegram
                                 </p>
                             </div>
-
-                            {/* Link Code Display */}
-                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-5">
-                                <p className="text-sm font-medium text-gray-700 mb-2">Your Unique Link Key</p>
-                                <div className="flex items-center gap-3">
-                                    <code className="flex-1 text-2xl font-mono font-bold text-blue-700 bg-white px-4 py-3 rounded-lg border-2 border-blue-300 tracking-wider">
-                                        {user?.link_code || 'Loading...'}
-                                    </code>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(user?.link_code || '');
-                                            setSuccess('Link key copied to clipboard!');
-                                            setTimeout(() => setSuccess(''), 3000);
-                                        }}
-                                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                                        title="Copy to clipboard"
-                                    >
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                        </svg>
-                                        <span className="hidden sm:inline">Copy</span>
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-600 mt-2">
-                                    ⓘ This key is permanent and unique to your account. You can use it to link multiple Telegram chats.
-                                </p>
-                            </div>
-
-                            {/* Action Button */}
-                            <div>
-                                <a
-                                    href={`https://t.me/ForwardFactorBot?start=${user?.link_code}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-full inline-flex justify-center items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg space-x-2"
-                                >
-                                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.693-1.653-1.124-2.678-1.8-1.185-.781-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.248-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.491-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.099-.002.321.023.465.14.121.099.155.232.171.326.016.094.036.308.02.475z" />
-                                    </svg>
-                                    <span>Open Telegram Bot</span>
-                                </a>
-                            </div>
-
-                            <p className="text-xs text-center text-gray-500">
-                                Don't have Telegram? <a href="https://telegram.org/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Download it here</a>
-                            </p>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
 
                 {/* Discovery Mode Section */}
