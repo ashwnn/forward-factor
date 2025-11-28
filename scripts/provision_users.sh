@@ -37,14 +37,15 @@ generate_uuid() {
     python3 -c "import uuid; print(str(uuid.uuid4()))"
 }
 
-# Function to generate link code
+# Function to generate link code (matches AuthService.generate_link_code: 16 hex chars)
 generate_link_code() {
-    python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+    python3 -c "import secrets; print(secrets.token_hex(8))"
 }
 
 # Function to hash password (bcrypt)
 hash_password() {
     local password="$1"
+    # Matches app.core.auth.hash_password logic (simple version, assumes pwd < 72 bytes)
     python3 -c "import bcrypt; print(bcrypt.hashpw('$password'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'))"
 }
 
@@ -77,7 +78,7 @@ provision_user() {
         password_hash=$(hash_password "$password")
     fi
     
-    # Create user
+    # Create user (matches AuthService.register_user)
     local sql="INSERT INTO users (id, email, password_hash, link_code, status, created_at) 
                VALUES ('$user_id', '$email', "
     
@@ -91,15 +92,43 @@ provision_user() {
     
     execute_sql "$sql" > /dev/null
     
-    # Create default settings
+    # Create default settings (matches UserSettings model defaults exactly)
+    # JSON fields need careful escaping for psql
+    local dte_pairs='[{"front": 30, "back": 60, "front_tol": 5, "back_tol": 10}, {"front": 30, "back": 90, "front_tol": 5, "back_tol": 10}, {"front": 60, "back": 90, "front_tol": 10, "back_tol": 10}]'
+    local quiet_hours='{"enabled": false, "start": "22:00", "end": "08:00"}'
+    
     local settings_sql="INSERT INTO user_settings (
-        user_id, ff_threshold, min_open_interest, min_volume, 
-        max_bid_ask_pct, sigma_fwd_floor, stability_scans, 
-        cooldown_minutes, timezone, scan_priority, discovery_mode, vol_point
+        user_id, 
+        ff_threshold, 
+        dte_pairs,
+        vol_point,
+        min_open_interest, 
+        min_volume, 
+        max_bid_ask_pct, 
+        sigma_fwd_floor, 
+        stability_scans, 
+        cooldown_minutes, 
+        quiet_hours,
+        preferred_structure,
+        timezone, 
+        scan_priority, 
+        discovery_mode
     ) VALUES (
-        '$user_id', 1.2, 100, 50, 
-        0.5, 0.1, 1, 
-        60, 'UTC', 'standard', false, 'ATM'
+        '$user_id', 
+        0.20, 
+        '$dte_pairs',
+        'ATM',
+        100, 
+        10, 
+        0.08, 
+        0.05, 
+        2, 
+        120, 
+        '$quiet_hours',
+        'ATM_calendar_call',
+        'America/Vancouver', 
+        'standard', 
+        false
     );"
     
     execute_sql "$settings_sql" > /dev/null
