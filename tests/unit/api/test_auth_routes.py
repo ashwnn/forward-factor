@@ -136,6 +136,7 @@ class TestLogin:
     async def test_valid_credentials(self, mock_db, mock_auth_service, mock_create_token, mock_user):
         """✅ Valid credentials → 200 + access token."""
         mock_auth_service.authenticate_user = AsyncMock(return_value=mock_user)
+        mock_auth_service.ensure_link_code = AsyncMock(return_value="code-123")
         mock_user.telegram_username = "testuser"
         
         from app.api.routes.auth import login
@@ -151,6 +152,7 @@ class TestLogin:
         
         assert response["access_token"] == "mock-token"
         assert response["user"]["telegram_username"] == "testuser"
+        assert response["user"]["link_code"] == "code-123"
     
     async def test_invalid_credentials(self, mock_db, mock_auth_service):
         """✅ Invalid credentials → 401."""
@@ -179,21 +181,6 @@ class TestLogin:
 class TestTelegramLink:
     """Test Telegram linking endpoints."""
     
-    async def test_link_telegram(self, mock_db, mock_auth_service, mock_user):
-        """✅ Links telegram username to account."""
-        updated_user = mock_user
-        updated_user.telegram_username = "new_telegram"
-        mock_auth_service.link_telegram_username = AsyncMock(return_value=updated_user)
-        
-        from app.api.routes.auth import link_telegram, LinkTelegramRequest
-        
-        request = LinkTelegramRequest(telegram_username="new_telegram")
-        
-        response = await link_telegram(request, mock_user, mock_db)
-        
-        assert response["telegram_username"] == "new_telegram"
-        mock_auth_service.link_telegram_username.assert_called_once()
-    
     async def test_unlink_telegram(self, mock_db, mock_auth_service, mock_user):
         """✅ Unlinks telegram account."""
         updated_user = mock_user
@@ -217,11 +204,15 @@ class TestTelegramLink:
 class TestGetMe:
     """Test get current user endpoint."""
     
-    async def test_get_current_user_info(self, mock_user):
-        """✅ Returns current user info."""
+    async def test_get_current_user_info(self, mock_user, mock_db, mock_auth_service):
+        """✅ Returns current user info with link code."""
+        mock_user.link_code = "code-123"
+        mock_auth_service.ensure_link_code = AsyncMock(return_value="code-123")
+        
         from app.api.routes.auth import get_current_user_info
         
-        response = await get_current_user_info(mock_user)
+        response = await get_current_user_info(mock_user, mock_db)
         
         assert response["email"] == mock_user.email
         assert response["id"] == mock_user.id
+        assert response["link_code"] == "code-123"

@@ -56,6 +56,7 @@ def mock_services():
     """Mock services."""
     # We need to patch the services where they are imported in the handlers
     with patch("app.bot.handlers.start.UserService") as start_user_svc, \
+         patch("app.bot.handlers.start.AuthService") as start_auth_svc, \
          patch("app.bot.handlers.watchlist.UserService") as wl_user_svc, \
          patch("app.bot.handlers.watchlist.SubscriptionService") as wl_sub_svc, \
          patch("app.bot.handlers.watchlist.TickerService") as wl_tick_svc, \
@@ -72,6 +73,9 @@ def mock_services():
             svc.get_or_create_user = AsyncMock()
             svc.update_user_settings = AsyncMock()
         
+        # Auth Service
+        start_auth_svc.verify_link_code = AsyncMock()
+        
         # Subscription Service
         wl_sub_svc.add_subscription = AsyncMock()
         wl_sub_svc.remove_subscription = AsyncMock()
@@ -86,6 +90,7 @@ def mock_services():
         
         yield {
             "user": start_user_svc, # They should all be similar mocks, but we return one for setting return_values
+            "auth": start_auth_svc,
             "sub": wl_sub_svc,
             "signal": cb_sig_svc,
             # We might need to set return values on ALL of them if they are distinct objects
@@ -124,7 +129,7 @@ class TestStartHandler:
         assert "Welcome" in mock_update.message.reply_text.call_args[0][0]
     
     async def test_start_new_user_no_code(self, mock_update, mock_context, mock_db_session, mock_services, mock_settings):
-        """✅ Missing invite code."""
+        """✅ Missing link code."""
         for svc in mock_services["all_user"]:
             svc.get_user_by_chat_id.return_value = None
         mock_context.args = []
@@ -132,19 +137,40 @@ class TestStartHandler:
         await start_command(mock_update, mock_context)
         
         mock_update.message.reply_text.assert_called_once()
-        assert "Access Restricted" in mock_update.message.reply_text.call_args[0][0]
+        assert "You must register on the web application" in mock_update.message.reply_text.call_args[0][0]
     
     async def test_start_new_user_valid_code(self, mock_update, mock_context, mock_db_session, mock_services, mock_settings):
-        """✅ Valid invite code."""
+        """✅ Valid link code."""
         for svc in mock_services["all_user"]:
             svc.get_user_by_chat_id.return_value = None
-        mock_context.args = ["secret"]
+        mock_context.args = ["valid-code"]
+        
+        # Mock auth service returning a user
+        mock_services["auth"].verify_link_code.return_value = MagicMock(id="user-1")
         
         await start_command(mock_update, mock_context)
         
         # Verify call on the specific mock used by start_command
-        mock_services["user"].get_or_create_user.assert_called_once()
+        mock_services["auth"].verify_link_code.assert_called_once()
+        # Should reply twice: once for success, once for welcome
+        assert mock_update.message.reply_text.call_count == 2
+        assert "Account successfully linked" in mock_update.message.reply_text.call_args_list[0][0][0]
+
+    async def test_start_new_user_invalid_code(self, mock_update, mock_context, mock_db_session, mock_services, mock_settings):
+        """✅ Invalid link code."""
+        for svc in mock_services["all_user"]:
+            svc.get_user_by_chat_id.return_value = None
+        mock_context.args = ["invalid-code"]
+        
+        # Mock auth service returning None
+        mock_services["auth"].verify_link_code.return_value = None
+        
+        await start_command(mock_update, mock_context)
+        
+        # Verify call on the specific mock used by start_command
+        mock_services["auth"].verify_link_code.assert_called_once()
         mock_update.message.reply_text.assert_called_once()
+        assert "Invalid link code" in mock_update.message.reply_text.call_args[0][0]
 
 
 # ============================================================================

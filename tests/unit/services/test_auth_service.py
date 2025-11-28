@@ -129,72 +129,62 @@ class TestAuthenticateUser:
 
 
 # ============================================================================
-# Tests for link_telegram_username
+# Tests for Link Code
 # ============================================================================
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-class TestLinkTelegram:
-    """Test Telegram linking."""
+class TestLinkCode:
+    """Test link code generation and verification."""
     
-    async def test_link_simple(self, mock_db, mock_user):
-        """✅ No matching bot user → just update username."""
-        # 1. Get user -> found
-        # 2. Get bot user -> None
-        mock_user_result = MagicMock()
-        mock_user_result.scalar_one_or_none.return_value = mock_user
+    def test_generate_link_code(self):
+        """✅ Generate valid link code."""
+        code = AuthService.generate_link_code()
+        assert isinstance(code, str)
+        assert len(code) > 0
+    
+    async def test_ensure_link_code_existing(self, mock_db, mock_user):
+        """✅ Existing code → return it."""
+        mock_user.link_code = "existing-code"
         
-        mock_bot_result = MagicMock()
-        mock_bot_result.scalar_one_or_none.return_value = None
+        code = await AuthService.ensure_link_code(mock_user, mock_db)
         
-        mock_db.execute.side_effect = [mock_user_result, mock_bot_result]
+        assert code == "existing-code"
+        mock_db.add.assert_not_called()
+    
+    async def test_ensure_link_code_new(self, mock_db, mock_user):
+        """✅ No code → generate and save."""
+        mock_user.link_code = None
         
-        user = await AuthService.link_telegram_username("user-123", "new_tg", mock_db)
+        code = await AuthService.ensure_link_code(mock_user, mock_db)
         
-        assert user.telegram_username == "new_tg"
+        assert code is not None
+        assert mock_user.link_code == code
+        mock_db.add.assert_called_once_with(mock_user)
         mock_db.commit.assert_called_once()
-    
-    async def test_merge_bot_user(self, mock_db, mock_user):
-        """✅ Merge bot user subscriptions to web user."""
-        # Mock bot user
-        bot_user = MagicMock(spec=User)
-        bot_user.id = "bot-123"
-        bot_user.telegram_chat_id = "chat-123"
+
+    async def test_verify_link_code_success(self, mock_db, mock_user):
+        """✅ Valid code → link account."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = mock_user
+        mock_db.execute.return_value = mock_result
         
-        # Mock subscriptions
-        mock_sub = MagicMock()
-        mock_sub.ticker = "AAPL"
+        user = await AuthService.verify_link_code("valid-code", "chat-123", "tg_user", mock_db)
         
-        # 1. Get user -> found
-        # 2. Get bot user -> found
-        # 3. Get bot subs -> [mock_sub]
-        # 4. Check existing sub -> None
-        
-        mock_user_res = MagicMock()
-        mock_user_res.scalar_one_or_none.return_value = mock_user
-        
-        mock_bot_res = MagicMock()
-        mock_bot_res.scalar_one_or_none.return_value = bot_user
-        
-        mock_subs_res = MagicMock()
-        mock_subs_res.scalars.return_value.all.return_value = [mock_sub]
-        
-        mock_exist_res = MagicMock()
-        mock_exist_res.scalar_one_or_none.return_value = None
-        
-        mock_db.execute.side_effect = [
-            mock_user_res, 
-            mock_bot_res, 
-            mock_subs_res, 
-            mock_exist_res
-        ]
-        
-        user = await AuthService.link_telegram_username("user-123", "bot_user", mock_db)
-        
+        assert user == mock_user
         assert user.telegram_chat_id == "chat-123"
-        assert user.telegram_username == "bot_user"
-        assert bot_user.status == "merged"
-        assert mock_sub.user_id == user.id  # Transferred
+        assert user.telegram_username == "tg_user"
+        mock_db.commit.assert_called_once()
+
+    async def test_verify_link_code_invalid(self, mock_db):
+        """✅ Invalid code → return None."""
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_db.execute.return_value = mock_result
+        
+        user = await AuthService.verify_link_code("invalid-code", "chat-123", "tg_user", mock_db)
+        
+        assert user is None
 
 
 # ============================================================================
