@@ -106,34 +106,77 @@ export default function SettingsPage() {
 
                 {/* Telegram Account Section */}
                 <div className="bg-white shadow rounded-lg p-6 mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Telegram Account</h2>
+                    <h2 className="text-xl font-semibold mb-4">Telegram Bot Connection</h2>
+
                     {user?.telegram_chat_id ? (
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Status</p>
-                                <p className="text-lg font-medium text-green-600 flex items-center">
-                                    <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                                    Connected
-                                    {user.telegram_username && <span className="text-gray-500 ml-2">(@{user.telegram_username})</span>}
-                                </p>
+                        <div className="space-y-4">
+                            {/* Connected Status */}
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="flex-shrink-0">
+                                            <svg className="h-8 w-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-green-800">Bot Connected</p>
+                                            {user.telegram_username && (
+                                                <p className="text-sm text-green-600">@{user.telegram_username}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={unlinkTelegram}
+                                        className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
+                                    >
+                                        Disconnect
+                                    </button>
+                                </div>
                             </div>
-                            <button
-                                onClick={unlinkTelegram}
-                                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                            >
-                                Unlink
-                            </button>
+
+                            {/* Bot Features */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <h3 className="text-sm font-semibold text-blue-900 mb-2">What you can do with the bot:</h3>
+                                <ul className="text-sm text-blue-800 space-y-1">
+                                    <li>• Receive real-time signal notifications</li>
+                                    <li>• Manage your watchlist on-the-go</li>
+                                    <li>• View your trade history</li>
+                                    <li>• Track signal decisions</li>
+                                </ul>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <p className="text-gray-600">
-                                Link your Telegram account to receive real-time signals and manage your watchlist.
-                            </p>
+                            {/* Not Connected Status */}
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <div className="flex items-start space-x-3">
+                                    <svg className="h-6 w-6 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <div>
+                                        <p className="text-sm font-medium text-yellow-800">Bot Not Connected</p>
+                                        <p className="text-sm text-yellow-700 mt-1">Link your Telegram account to receive signal notifications</p>
+                                    </div>
+                                </div>
+                            </div>
 
-                            <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                                <p className="text-sm text-gray-500 mb-2">Your Link Code</p>
-                                <div className="flex items-center gap-2">
-                                    <code className="text-2xl font-mono font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded">
+                            {/* Instructions */}
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">How to connect:</h3>
+                                <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
+                                    <li>Copy your unique link code below</li>
+                                    <li>Click "Open Telegram Bot" or search for <span className="font-mono bg-gray-100 px-1 rounded">@ForwardFactorBot</span> on Telegram</li>
+                                    <li>Send the code to the bot or use the deep link</li>
+                                    <li>Start receiving signals!</li>
+                                </ol>
+                            </div>
+
+                            {/* Link Code Display */}
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-5">
+                                <p className="text-sm font-medium text-gray-700 mb-2">Your Unique Link Code</p>
+                                <div className="flex items-center gap-3">
+                                    <code className="flex-1 text-3xl font-mono font-bold text-blue-700 bg-white px-4 py-3 rounded-lg border-2 border-blue-300 tracking-wider">
                                         {user?.link_code || 'Loading...'}
                                     </code>
                                     <button
@@ -142,26 +185,37 @@ export default function SettingsPage() {
                                             setSuccess('Link code copied to clipboard!');
                                             setTimeout(() => setSuccess(''), 3000);
                                         }}
-                                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                        className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                                        title="Copy to clipboard"
                                     >
-                                        Copy
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        <span className="hidden sm:inline">Copy</span>
                                     </button>
                                 </div>
+                                <p className="text-xs text-gray-600 mt-2">
+                                    ⓘ This code is unique to your account and can only be used once
+                                </p>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-3">
+                            {/* Action Button */}
+                            <div>
                                 <a
                                     href={`https://t.me/ForwardFactorBot?start=${user?.link_code}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex justify-center items-center px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    className="w-full inline-flex justify-center items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg space-x-2"
                                 >
-                                    Open in Telegram
+                                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161c-.18 1.897-.962 6.502-1.359 8.627-.168.9-.5 1.201-.82 1.23-.697.064-1.226-.461-1.901-.903-1.056-.693-1.653-1.124-2.678-1.8-1.185-.781-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.248-.024c-.106.024-1.793 1.14-5.061 3.345-.479.33-.913.491-1.302.481-.428-.008-1.252-.241-1.865-.44-.752-.244-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.831-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635.099-.002.321.023.465.14.121.099.155.232.171.326.016.094.036.308.02.475z" />
+                                    </svg>
+                                    <span>Open Telegram Bot</span>
                                 </a>
                             </div>
 
-                            <p className="text-xs text-gray-500 mt-2">
-                                Click the button above or send the code manually to <a href="https://t.me/ForwardFactorBot" className="text-blue-600 hover:underline">@ForwardFactorBot</a>
+                            <p className="text-xs text-center text-gray-500">
+                                Don't have Telegram? <a href="https://telegram.org/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Download it here</a>
                             </p>
                         </div>
                     )}

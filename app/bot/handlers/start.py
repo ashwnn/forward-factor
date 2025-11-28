@@ -4,7 +4,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from app.services import UserService, AuthService
 from app.core.database import AsyncSessionLocal
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +41,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # No code or invalid flow
             await update.message.reply_text(
                 "⚠️ You must register on the web application before using the Telegram bot.\n\n"
-                f"Please log in at {settings.frontend_url}/login and obtain your personal link code from Settings.\n\n"
-                "Once you have the code, send it here or click the link in the dashboard."
+                "Please visit the web dashboard and obtain your personal link code from Settings.\n\n"
+                "Once you have the code, use /start <your-link-code> or click the link in the dashboard."
             )
     except Exception as e:
         logger.error(f"Error in start_command: {e}", exc_info=True)
