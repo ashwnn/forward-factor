@@ -4,6 +4,9 @@ set -e
 echo "Stopping containers..."
 docker compose down
 
+echo "Building images..."
+docker compose build --no-cache
+
 echo "Starting TimescaleDB..."
 docker compose up -d timescaledb
 
