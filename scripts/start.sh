@@ -2,7 +2,7 @@
 set -e
 
 echo "Stopping containers and removing volumes..."
-docker compose down
+docker compose down -v
 
 echo "Starting TimescaleDB..."
 docker compose up -d timescaledb
