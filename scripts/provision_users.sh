@@ -27,9 +27,8 @@ DB_NAME="${DB_NAME:-ffbot}"
 # Function to execute SQL inside the container
 execute_sql() {
     local sql="$1"
-    # Use docker exec to run psql inside the container
-    # We use -i to allow passing input if needed, though here we pass command string
-    docker exec -i "$DB_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t -c "$sql"
+    # Pipe SQL to psql stdin to avoid quoting issues with docker exec arguments
+    echo "$sql" | docker exec -i "$DB_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t
 }
 
 # Function to generate a UUID
@@ -90,7 +89,10 @@ provision_user() {
     
     sql+="'$link_code', 'active', NOW());"
     
-    execute_sql "$sql" > /dev/null
+    if ! execute_sql "$sql" > /dev/null; then
+        echo -e "${RED}❌ Error creating user record${NC}"
+        return 1
+    fi
     
     # Create default settings (matches UserSettings model defaults exactly)
     # JSON fields need careful escaping for psql
@@ -131,7 +133,12 @@ provision_user() {
         false
     );"
     
-    execute_sql "$settings_sql" > /dev/null
+    if ! execute_sql "$settings_sql" > /dev/null; then
+        echo -e "${RED}❌ Error creating user settings${NC}"
+        # Try to cleanup user
+        execute_sql "DELETE FROM users WHERE id = '$user_id';" > /dev/null
+        return 1
+    fi
     
     # Create Telegram chat link if provided
     if [ ! -z "$telegram_chat_id" ] && [ "$telegram_chat_id" != "null" ]; then
