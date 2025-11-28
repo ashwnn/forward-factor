@@ -138,10 +138,12 @@ class TestLinkCode:
     """Test link code generation and verification."""
     
     def test_generate_link_code(self):
-        """✅ Generate valid link code."""
+        """✅ Generate valid 16-character hex link code."""
         code = AuthService.generate_link_code()
         assert isinstance(code, str)
-        assert len(code) > 0
+        assert len(code) == 16  # 8 bytes * 2 hex chars = 16 characters
+        # Verify it's valid hex
+        assert all(c in '0123456789abcdef' for c in code)
     
     async def test_ensure_link_code_existing(self, mock_db, mock_user):
         """✅ Existing code → return it."""

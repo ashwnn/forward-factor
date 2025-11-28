@@ -156,33 +156,36 @@ export default function SettingsPage() {
                                     </svg>
                                     <div>
                                         <p className="text-sm font-medium text-yellow-800">Bot Not Connected</p>
-                                        <p className="text-sm text-yellow-700 mt-1">Link your Telegram account to receive signal notifications</p>
+                                        <p className="text-sm text-yellow-700 mt-1">Use your unique link key to connect your Telegram account automatically</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Instructions */}
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                <h3 className="text-sm font-semibold text-gray-900 mb-3">How to connect:</h3>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">How to connect your Telegram account:</h3>
                                 <ol className="text-sm text-gray-700 space-y-2 list-decimal list-inside">
-                                    <li>Copy your unique link code below</li>
-                                    <li>Click "Open Telegram Bot" or search for <span className="font-mono bg-gray-100 px-1 rounded">@ForwardFactorBot</span> on Telegram</li>
-                                    <li>Send the code to the bot or use the deep link</li>
-                                    <li>Start receiving signals!</li>
+                                    <li>Copy your unique 16-character link key below</li>
+                                    <li>Open the Telegram bot (click "Open Telegram Bot" button or search for it)</li>
+                                    <li>Send the command: <span className="font-mono bg-gray-100 px-1 rounded">/start &lt;your-link-key&gt;</span></li>
+                                    <li>Your Telegram chat will be automatically linked to your account!</li>
                                 </ol>
+                                <p className="text-xs text-gray-600 mt-3">
+                                    💡 <strong>Tip:</strong> You can link multiple Telegram chats using the same key. Each chat will receive notifications for this account.
+                                </p>
                             </div>
 
                             {/* Link Code Display */}
                             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-5">
-                                <p className="text-sm font-medium text-gray-700 mb-2">Your Unique Link Code</p>
+                                <p className="text-sm font-medium text-gray-700 mb-2">Your Unique Link Key</p>
                                 <div className="flex items-center gap-3">
-                                    <code className="flex-1 text-3xl font-mono font-bold text-blue-700 bg-white px-4 py-3 rounded-lg border-2 border-blue-300 tracking-wider">
+                                    <code className="flex-1 text-2xl font-mono font-bold text-blue-700 bg-white px-4 py-3 rounded-lg border-2 border-blue-300 tracking-wider">
                                         {user?.link_code || 'Loading...'}
                                     </code>
                                     <button
                                         onClick={() => {
                                             navigator.clipboard.writeText(user?.link_code || '');
-                                            setSuccess('Link code copied to clipboard!');
+                                            setSuccess('Link key copied to clipboard!');
                                             setTimeout(() => setSuccess(''), 3000);
                                         }}
                                         className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
@@ -195,7 +198,7 @@ export default function SettingsPage() {
                                     </button>
                                 </div>
                                 <p className="text-xs text-gray-600 mt-2">
-                                    ⓘ This code is unique to your account and can only be used once
+                                    ⓘ This key is permanent and unique to your account. You can use it to link multiple Telegram chats.
                                 </p>
                             </div>
 

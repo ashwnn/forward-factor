@@ -17,8 +17,8 @@ class AuthService:
     
     @staticmethod
     def generate_link_code() -> str:
-        """Generate a unique link code."""
-        return secrets.token_hex(4)
+        """Generate a unique 16-character hex link code."""
+        return secrets.token_hex(8)  # 8 bytes = 16 hex characters
     
     @staticmethod
     async def register_user(email: str, password: str, db: AsyncSession) -> User:
