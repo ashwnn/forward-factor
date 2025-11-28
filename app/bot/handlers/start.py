@@ -70,9 +70,12 @@ Welcome to Forward Factor Signal Bot!
 I'll help you find calendar spread opportunities based on Forward Factor analysis.
 
 Commands:
+/me - View your profile and settings
 /add TICKER - Add a ticker to your watchlist
 /remove TICKER - Remove a ticker from your watchlist
 /list - Show your current watchlist
+/settings - View all your settings
+/set KEY VALUE - Change a setting
 /history - View your recent signals and decisions
 /help - Show this help message
 
@@ -90,10 +93,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Forward Factor Signal Bot Commands:
 
 /start - Initialize your account
+/me - View your profile, settings, and watchlist
 /add TICKER - Add ticker to watchlist (e.g., /add AAPL)
 /remove TICKER - Remove ticker from watchlist
 /list - Show your watchlist
 /history - View recent signals and your decisions
+/settings - View all your settings
+/set KEY VALUE - Change a setting (e.g., /set discovery on)
 /help - Show this message
 
 About Forward Factor:

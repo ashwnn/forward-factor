@@ -23,7 +23,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
                 return
                 
-            settings = user.settings
+            settings = await UserService.get_user_settings(db, user.id)
             
             if not settings:
                 await update.message.reply_text("Error retrieving settings.")
@@ -45,6 +45,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Scan Priority: {settings.scan_priority} (`priority`)
 • Stability Scans: {settings.stability_scans} (`stability`)
 • Cooldown: {settings.cooldown_minutes}m (`cooldown`)
+• Discovery Mode: {'ON' if settings.discovery_mode else 'OFF'} (`discovery`)
 
 **General**
 • Timezone: {settings.timezone} (`timezone`)
@@ -77,7 +78,7 @@ async def set_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if not context.args or len(context.args) < 2:
             await update.message.reply_text(
-                "Usage: `/set <key> <value>`\nExample: `/set ff_threshold 0.25`",
+                "Usage: `/set <key> <value>`\\nExample: `/set ff_threshold 0.25`",
                 parse_mode="Markdown"
             )
             return
@@ -95,7 +96,8 @@ async def set_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "stability": ("stability_scans", int),
             "cooldown": ("cooldown_minutes", int),
             "timezone": ("timezone", str),
-            "priority": ("scan_priority", str)
+            "priority": ("scan_priority", str),
+            "discovery": ("discovery_mode", bool)
         }
         
         if key not in key_map:
@@ -115,6 +117,9 @@ async def set_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     value = value / 100.0
             elif type_func == int:
                 value = int(value_str)
+            elif type_func == bool:
+                # Handle boolean inputs
+                value = value_str.lower() in ["true", "1", "on", "yes", "enabled"]
             else:
                 value = value_str
                 
@@ -138,6 +143,62 @@ async def set_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"✅ Updated **{key}** to `{value}`", parse_mode="Markdown")
     except Exception as e:
         logger.error(f"Error in set_command: {e}", exc_info=True)
+        await update.message.reply_text(
+            "❌ An error occurred processing your request. Please try again later."
+        )
+
+
+async def me_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Handle /me command.
+    Shows user's current settings and followed tickers.
+    """
+    try:
+        chat_id = str(update.effective_chat.id)
+        
+        async with AsyncSessionLocal() as db:
+            user = await UserService.get_user_by_chat_id(db, chat_id)
+            
+            if not user:
+                await update.message.reply_text("Please use /start <invite_code> to initialize your account.")
+                return
+                
+            settings = await UserService.get_user_settings(db, user.id)
+            
+            if not settings:
+                await update.message.reply_text("Error retrieving settings.")
+                return
+            
+            # Get subscriptions
+            from app.services import SubscriptionService
+            subscriptions = await SubscriptionService.get_user_subscriptions(db, user.id)
+            tickers = [sub.ticker for sub in subscriptions]
+            
+            # Format tickers list
+            if tickers:
+                ticker_list = ", ".join(sorted(tickers))
+            else:
+                ticker_list = "None"
+            
+            message = f"""
+👤 **Your Profile**
+
+**Watchlist** ({len(tickers)} tickers)
+{ticker_list}
+
+**Key Settings**
+• FF Threshold: {settings.ff_threshold:.0%}
+• Min OI: {settings.min_open_interest} | Min Vol: {settings.min_volume}
+• Priority: {settings.scan_priority}
+• Discovery Mode: {'🟢 ON' if settings.discovery_mode else '🔴 OFF'}
+• Timezone: {settings.timezone}
+
+Use /settings to view all settings or /set to change them.
+            """.strip()
+            
+            await update.message.reply_text(message, parse_mode="Markdown")
+    except Exception as e:
+        logger.error(f"Error in me_command: {e}", exc_info=True)
         await update.message.reply_text(
             "❌ An error occurred processing your request. Please try again later."
         )
