@@ -19,33 +19,17 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Load .env file if it exists
-if [ -f .env ]; then
-    export $(grep -v '^#' .env | xargs)
-fi
-
-# Database connection from environment or defaults (matching docker-compose.yml)
-DB_HOST="${DB_HOST:-timescaledb}"
-DB_PORT="${DB_PORT:-5432}"
-DB_NAME="${DB_NAME:-ffbot}"
+# Database configuration
+DB_CONTAINER_NAME="ff-bot-timescaledb"
 DB_USER="${DB_USER:-ffbot}"
-DB_PASSWORD="${DB_PASSWORD}"
+DB_NAME="${DB_NAME:-ffbot}"
 
-# Check if DB_PASSWORD is set
-if [ -z "$DB_PASSWORD" ]; then
-    echo -e "${RED}❌ Error: DB_PASSWORD environment variable is not set${NC}"
-    echo "Please set it in your .env file or export it:"
-    echo "  export DB_PASSWORD='your_password'"
-    exit 1
-fi
-
-# Export PGPASSWORD for psql
-export PGPASSWORD="$DB_PASSWORD"
-
-# Function to execute SQL
+# Function to execute SQL inside the container
 execute_sql() {
     local sql="$1"
-    psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -t -c "$sql"
+    # Use docker exec to run psql inside the container
+    # We use -i to allow passing input if needed, though here we pass command string
+    docker exec -i "$DB_CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t -c "$sql"
 }
 
 # Function to generate a UUID
@@ -191,6 +175,12 @@ main() {
         json_data=$(cat "$1")
     fi
     
+    # Check if docker is installed
+    if ! command -v docker &> /dev/null; then
+        echo -e "${RED}❌ Error: docker is required but not installed${NC}"
+        exit 1
+    fi
+    
     # Check if jq is installed
     if ! command -v jq &> /dev/null; then
         echo -e "${RED}❌ Error: jq is required but not installed${NC}"
@@ -198,12 +188,16 @@ main() {
         exit 1
     fi
     
+    # Check if container is running
+    if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER_NAME}$"; then
+        echo -e "${RED}❌ Error: Container ${DB_CONTAINER_NAME} is not running${NC}"
+        echo "Start it with: docker-compose up -d timescaledb"
+        exit 1
+    fi
+    
     # Check database connection
-    if ! psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "SELECT 1;" > /dev/null 2>&1; then
-        echo -e "${RED}❌ Error: Cannot connect to database${NC}"
-        echo "  Host: $DB_HOST:$DB_PORT"
-        echo "  Database: $DB_NAME"
-        echo "  User: $DB_USER"
+    if ! execute_sql "SELECT 1;" > /dev/null 2>&1; then
+        echo -e "${RED}❌ Error: Cannot connect to database inside container${NC}"
         exit 1
     fi
     
