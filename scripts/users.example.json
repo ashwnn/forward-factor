@@ -1,0 +1,17 @@
+[
+    {
+        "email": "user1@example.com",
+        "password": "changeme123",
+        "telegram_chat_id": "123456789",
+        "telegram_first_name": "John",
+        "telegram_last_name": "Doe",
+        "telegram_username": "johndoe"
+    },
+    {
+        "email": "user2@example.com",
+        "password": "changeme456"
+    },
+    {
+        "email": "user3@example.com"
+    }
+]
