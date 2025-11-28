@@ -41,20 +41,20 @@ export default function HistoryPage() {
 
     return (
         <DashboardLayout>
-            <div className="px-4 py-6 sm:px-0">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">Signal History</h1>
+            <div className="px-2 sm:px-4 py-4 sm:py-6">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Signal History</h1>
 
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4 text-sm">
                         {error}
                     </div>
                 )}
 
                 {loading ? (
-                    <p>Loading history...</p>
+                    <p className="text-sm">Loading history...</p>
                 ) : history.length === 0 ? (
-                    <div className="bg-white shadow rounded-lg p-6">
-                        <p className="text-gray-600">No signal history yet.</p>
+                    <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+                        <p className="text-sm sm:text-base text-gray-600">No signal history yet.</p>
                     </div>
                 ) : (
                     <div className="space-y-4">

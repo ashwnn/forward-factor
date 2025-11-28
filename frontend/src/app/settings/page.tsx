@@ -90,35 +90,35 @@ export default function SettingsPage() {
 
     return (
         <DashboardLayout>
-            <div className="px-4 py-6 sm:px-0">
-                <h1 className="text-3xl font-bold text-gray-900 mb-6">Settings</h1>
+            <div className="px-2 sm:px-4 py-4 sm:py-6">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 sm:mb-6">Settings</h1>
 
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4 text-sm">
                         {error}
                     </div>
                 )}
                 {success && (
-                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded mb-4">
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4 text-sm">
                         {success}
                     </div>
                 )}
 
                 {/* Telegram Account Section */}
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Telegram Bot Connection</h2>
+                <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Telegram Bot Connection</h2>
 
                     {/* Link Key - Always Shown */}
-                    <div className="mb-6">
+                    <div className="mb-4 sm:mb-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Your Link Key
                         </label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                             <input
                                 type="password"
                                 value={user?.link_code || ''}
                                 readOnly
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm"
+                                className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-md bg-gray-50 font-mono text-sm"
                                 placeholder="••••••••••••••••"
                             />
                             <button
@@ -127,16 +127,16 @@ export default function SettingsPage() {
                                     setSuccess('Link key copied to clipboard!');
                                     setTimeout(() => setSuccess(''), 2000);
                                 }}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                className="px-4 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 min-h-[44px]"
                                 title="Copy link key"
                             >
                                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
-                                Copy
+                                <span>Copy</span>
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-500 mt-1.5">
                             Use this key with <code className="bg-gray-100 px-1 rounded">/start &lt;key&gt;</code> in Telegram to link chats
                         </p>
                     </div>
@@ -201,10 +201,10 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Discovery Mode Section */}
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Discovery Mode</h2>
-                    <div className="flex items-center justify-between">
-                        <div>
+                <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Discovery Mode</h2>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex-1">
                             <p className="text-sm text-gray-600 mb-1">
                                 Enable market-wide scanning to discover signals from the top 100 most liquid optionable stocks.
                             </p>
@@ -212,7 +212,7 @@ export default function SettingsPage() {
                                 When enabled, you&apos;ll receive signals from stocks you haven&apos;t explicitly subscribed to.
                             </p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
+                        <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
                             <input
                                 type="checkbox"
                                 checked={settings.discovery_mode}
@@ -221,15 +221,15 @@ export default function SettingsPage() {
                                 }
                                 className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
                         </label>
                     </div>
                 </div>
 
                 {/* Signal Settings */}
-                <div className="bg-white shadow rounded-lg p-6 mb-6">
-                    <h2 className="text-xl font-semibold mb-4">Signal Settings</h2>
-                    <div className="space-y-4">
+                <div className="bg-white shadow rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Signal Settings</h2>
+                    <div className="space-y-4 sm:space-y-5">
                         <div>
                             <label className="block text-sm font-medium text-gray-900 mb-1">
                                 Forward Factor Threshold
@@ -244,7 +244,7 @@ export default function SettingsPage() {
                                 onChange={(e) =>
                                     setSettings({ ...settings, ff_threshold: parseFloat(e.target.value) })
                                 }
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
@@ -258,7 +258,7 @@ export default function SettingsPage() {
                             <select
                                 value={settings.vol_point}
                                 onChange={(e) => setSettings({ ...settings, vol_point: e.target.value })}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-md text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="ATM">ATM</option>
                                 <option value="35d_put">35 Delta Put</option>
@@ -266,7 +266,7 @@ export default function SettingsPage() {
                             </select>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-900 mb-1">
                                     Min Open Interest
@@ -338,7 +338,7 @@ export default function SettingsPage() {
                     <button
                         onClick={saveSettings}
                         disabled={saving}
-                        className="mt-6 w-full bg-blue-700 text-white px-4 py-2 rounded-md hover:bg-blue-800 disabled:opacity-50"
+                        className="mt-5 sm:mt-6 w-full bg-blue-700 text-white px-4 py-3 sm:py-2.5 rounded-md hover:bg-blue-800 disabled:opacity-50 transition-colors font-medium text-base sm:text-sm min-h-[48px] sm:min-h-[44px]"
                     >
                         {saving ? 'Saving...' : 'Save Settings'}
                     </button>
