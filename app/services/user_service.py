@@ -10,40 +10,75 @@ class UserService:
     """Service for user management."""
     
     @staticmethod
-    async def get_or_create_user(db: AsyncSession, telegram_chat_id: str, telegram_username: Optional[str] = None) -> User:
+    async def get_or_create_user(
+        db: AsyncSession, 
+        telegram_chat_id: str, 
+        first_name: str,
+        last_name: Optional[str] = None,
+        telegram_username: Optional[str] = None
+    ) -> User:
         """
-        Get existing user or create new one.
+        Get existing user by Telegram chat ID or create new user with linked chat.
         
         Args:
             db: Database session
             telegram_chat_id: Telegram chat ID
+            first_name: Telegram user's first name (required)
+            last_name: Telegram user's last name (optional)
             telegram_username: Optional Telegram username (without @)
             
         Returns:
             User object
         """
-        # Try to get existing user
+        from app.models.telegram_chat import TelegramChat
+        
+        # Try to get existing user through TelegramChat
         result = await db.execute(
-            select(User).where(User.telegram_chat_id == telegram_chat_id)
+            select(User)
+            .join(TelegramChat, User.id == TelegramChat.user_id)
+            .where(TelegramChat.chat_id == telegram_chat_id)
         )
         user = result.scalar_one_or_none()
         
         if user:
-            # Update telegram_username if provided and different
-            if telegram_username and user.telegram_username != telegram_username:
-                user.telegram_username = telegram_username
-                await db.commit()
-                await db.refresh(user)
+            # User exists - update the TelegramChat record if needed
+            result = await db.execute(
+                select(TelegramChat).where(TelegramChat.chat_id == telegram_chat_id)
+            )
+            telegram_chat = result.scalar_one_or_none()
+            
+            if telegram_chat:
+                # Update chat info if changed
+                updated = False
+                if telegram_username and telegram_chat.username != telegram_username:
+                    telegram_chat.username = telegram_username
+                    updated = True
+                if telegram_chat.first_name != first_name:
+                    telegram_chat.first_name = first_name
+                    updated = True
+                if telegram_chat.last_name != last_name:
+                    telegram_chat.last_name = last_name
+                    updated = True
+                    
+                if updated:
+                    await db.commit()
+                    await db.refresh(user)
             return user
         
         # Create new user with default settings
-        user = User(
-            telegram_chat_id=telegram_chat_id,
-            telegram_username=telegram_username,
-            status="active"
-        )
+        user = User(status="active")
         db.add(user)
         await db.flush()
+        
+        # Create TelegramChat link
+        telegram_chat = TelegramChat(
+            user_id=user.id,
+            chat_id=telegram_chat_id,
+            first_name=first_name,
+            last_name=last_name,
+            username=telegram_username
+        )
+        db.add(telegram_chat)
         
         # Create default settings
         user_settings = UserSettings(
@@ -67,8 +102,12 @@ class UserService:
     @staticmethod
     async def get_user_by_chat_id(db: AsyncSession, telegram_chat_id: str) -> Optional[User]:
         """Get user by Telegram chat ID."""
+        from app.models.telegram_chat import TelegramChat
+        
         result = await db.execute(
-            select(User).where(User.telegram_chat_id == telegram_chat_id)
+            select(User)
+            .join(TelegramChat, User.id == TelegramChat.user_id)
+            .where(TelegramChat.chat_id == telegram_chat_id)
         )
         return result.scalar_one_or_none()
     

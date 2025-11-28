@@ -28,14 +28,11 @@ class TestUserModel:
         user = User(
             email="test@example.com",
             password_hash="hashed_secret",
-            status="active",
-            telegram_username="tg_user",
-            telegram_chat_id="12345"
+            status="active"
         )
         
         assert user.email == "test@example.com"
         assert user.status == "active"
-        assert user.telegram_username == "tg_user"
     
     def test_user_defaults(self):
         """✅ Defaults applied."""

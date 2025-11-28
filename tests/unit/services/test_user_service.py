@@ -27,8 +27,6 @@ def mock_user():
     """Create a mock user."""
     user = MagicMock(spec=User)
     user.id = "user-123"
-    user.telegram_chat_id = "chat-123"
-    user.telegram_username = "tg_user"
     return user
 
 
@@ -66,41 +64,66 @@ class TestGetOrCreateUser:
     
     async def test_existing_user(self, mock_db, mock_user):
         """✅ Existing user found → return user."""
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_user
-        mock_db.execute.return_value = mock_result
+        # Mock both User and TelegramChat queries
+        mock_user_result = MagicMock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
         
-        user = await UserService.get_or_create_user(mock_db, "chat-123")
+        mock_chat_result = MagicMock()
+        mock_chat = MagicMock()
+        mock_chat.first_name = "John"
+        mock_chat.last_name = "Doe"
+        mock_chat.username = "johndoe"
+        mock_chat_result.scalar_one_or_none.return_value = mock_chat
+        
+        # First query returns user, second returns telegram chat
+        mock_db.execute.side_effect = [mock_user_result, mock_chat_result]
+        
+        user = await UserService.get_or_create_user(
+            mock_db, "chat-123", "John", "Doe", "johndoe"
+        )
         
         assert user == mock_user
-        mock_db.add.assert_not_called()
     
-    async def test_update_username(self, mock_db, mock_user):
-        """✅ Update telegram_username if different."""
-        mock_user.telegram_username = "old_name"
+    async def test_update_chat_info(self, mock_db, mock_user):
+        """✅ Update TelegramChat info if different."""
+        # Mock User query
+        mock_user_result = MagicMock()
+        mock_user_result.scalar_one_or_none.return_value = mock_user
         
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_user
-        mock_db.execute.return_value = mock_result
+        # Mock TelegramChat query  
+        mock_chat_result = MagicMock()
+        mock_chat = MagicMock()
+        mock_chat.first_name = "Old"
+        mock_chat.last_name = "Name"
+        mock_chat.username = "oldname"
+        mock_chat_result.scalar_one_or_none.return_value = mock_chat
         
-        user = await UserService.get_or_create_user(mock_db, "chat-123", "new_name")
+        mock_db.execute.side_effect = [mock_user_result, mock_chat_result]
         
-        assert user.telegram_username == "new_name"
+        user = await UserService.get_or_create_user(
+            mock_db, "chat-123", "New", "Name", "newname"
+        )
+        
+        assert mock_chat.first_name == "New"
+        assert mock_chat.last_name == "Name"
+        assert mock_chat.username == "newname"
         mock_db.commit.assert_called_once()
     
     async def test_create_new_user(self, mock_db, mock_app_settings):
         """✅ New user → create with default settings."""
+        # Mock query returns None (no existing user)
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
         
-        user = await UserService.get_or_create_user(mock_db, "chat-new", "new_user")
+        user = await UserService.get_or_create_user(
+            mock_db, "chat-new", "New", "User", "newuser"
+        )
         
-        assert user.telegram_chat_id == "chat-new"
-        assert user.telegram_username == "new_user"
+        assert user.status == "active"
         
-        # Verify creation of user and settings
-        assert mock_db.add.call_count == 2
+        # Verify creation of user, telegram chat, and settings
+        assert mock_db.add.call_count == 3
         mock_db.commit.assert_called_once()
 
 

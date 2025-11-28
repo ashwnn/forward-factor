@@ -182,38 +182,7 @@ class AuthService:
         await db.refresh(user)
         return user.link_code
 
-    @staticmethod
-    async def unlink_telegram_username(user_id: str, db: AsyncSession) -> User:
-        """
-        Unlink Telegram account from a user.
-        
-        Args:
-            user_id: User's UUID
-            db: Database session
-            
-        Returns:
-            Updated User object
-            
-        Raises:
-            HTTPException: If user not found
-        """
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        # Clear Telegram information
-        user.telegram_username = None
-        user.telegram_chat_id = None
-        
-        await db.commit()
-        await db.refresh(user)
-        
-        return user
+
     
     @staticmethod
     async def get_user_by_email(email: str, db: AsyncSession) -> Optional[User]:
@@ -242,5 +211,12 @@ class AuthService:
         Returns:
             User object if found, None otherwise
         """
-        result = await db.execute(select(User).where(User.telegram_chat_id == telegram_chat_id))
+        from app.models.telegram_chat import TelegramChat
+        
+        # Query through TelegramChat table to find the user
+        result = await db.execute(
+            select(User)
+            .join(TelegramChat, User.id == TelegramChat.user_id)
+            .where(TelegramChat.chat_id == telegram_chat_id)
+        )
         return result.scalar_one_or_none()

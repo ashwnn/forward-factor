@@ -183,16 +183,24 @@ class TestTelegramLink:
     """Test Telegram linking endpoints."""
     
     async def test_unlink_telegram(self, mock_db, mock_auth_service, mock_user):
-        """✅ Unlinks telegram account."""
-        updated_user = mock_user
-        mock_auth_service.unlink_telegram_username = AsyncMock(return_value=updated_user)
+        """✅ Unlinks telegram chat(s)."""
+        mock_auth_service.ensure_link_code = AsyncMock(return_value="code-123")
         
-        from app.api.routes.auth import unlink_telegram
+        # Mock telegram_chats query result (empty list after unlinking)
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_db.execute = AsyncMock(return_value=mock_result)
         
-        response = await unlink_telegram(mock_user, mock_db)
+        from app.api.routes.auth import unlink_telegram, UnlinkTelegramRequest
         
-        # Just verify the service was called
-        mock_auth_service.unlink_telegram_username.assert_called_once()
+        unlink_request = UnlinkTelegramRequest(chat_id=None)  # Unlink all
+        response = await unlink_telegram(unlink_request, mock_user, mock_db)
+        
+        # Verify response structure
+        assert response["id"] == mock_user.id
+        assert response["email"] == mock_user.email
+        assert response["telegram_chats"] == []
+        assert response["link_code"] == "code-123"
 
 
 # ============================================================================

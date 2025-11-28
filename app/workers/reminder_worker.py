@@ -85,6 +85,8 @@ Original Signal Details:
         """
         try:
             async with AsyncSessionLocal() as db:
+                from app.models.telegram_chat import TelegramChat
+                
                 # Get signal
                 query = select(Signal).where(Signal.id == reminder["signal_id"])
                 
@@ -109,24 +111,40 @@ Original Signal Details:
                 )
                 user = result.scalar_one_or_none()
                 
-                if not user or not user.telegram_chat_id:
-                    logger.warning(f"User {reminder['user_id']} not found or has no chat_id")
+                if not user:
+                    logger.warning(f"User {reminder['user_id']} not found")
+                    return
+                
+                # Get all linked Telegram chats for this user
+                result = await db.execute(
+                    select(TelegramChat).where(TelegramChat.user_id == user.id)
+                )
+                telegram_chats = result.scalars().all()
+                
+                if not telegram_chats:
+                    logger.warning(f"User {reminder['user_id']} has no linked Telegram chats")
                     return
                 
                 # Format message
                 message = self.format_reminder_message(signal, reminder["type"])
                 
-                # Send message
-                await self.bot.send_message(
-                    chat_id=user.telegram_chat_id,
-                    text=message,
-                    parse_mode='Markdown'
-                )
-                
-                logger.info(
-                    f"Sent {reminder['type']} reminder to user {user.telegram_chat_id} "
-                    f"for signal {signal.id}"
-                )
+                # Send message to all linked chats
+                for chat in telegram_chats:
+                    try:
+                        await self.bot.send_message(
+                            chat_id=chat.chat_id,
+                            text=message,
+                            parse_mode='Markdown'
+                        )
+                        logger.info(
+                            f"Sent {reminder['type']} reminder to chat {chat.chat_id} "
+                            f"for user {user.id} for signal {signal.id}"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error sending reminder to chat {chat.chat_id}: {e}",
+                            exc_info=True
+                        )
                 
         except Exception as e:
             logger.error(f"Error sending reminder: {e}", exc_info=True)

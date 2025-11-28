@@ -148,36 +148,82 @@ async def login(
         "user": {
             "id": str(user.id),
             "email": user.email,
-            "telegram_username": user.telegram_username,
             "created_at": user.created_at.isoformat(),
             "link_code": link_code
         }
     }
 
 
+class UnlinkTelegramRequest(BaseModel):
+    """Request to unlink a Telegram chat."""
+    chat_id: Optional[str] = None  # If None, unlink all chats
+
+
 @router.post("/unlink-telegram", response_model=UserResponse)
 async def unlink_telegram(
+    unlink_request: UnlinkTelegramRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Unlink Telegram account from the current user.
+    Unlink Telegram chat(s) from the current user.
+    
+    If chat_id is provided, unlinks that specific chat.
+    If chat_id is None, unlinks all Telegram chats.
     
     Requires authentication.
     """
-    user = await AuthService.unlink_telegram_username(
-        str(current_user.id),
-        db
+    from app.models.telegram_chat import TelegramChat
+    from sqlalchemy import select, delete
+    
+    if unlink_request.chat_id:
+        # Unlink specific chat
+        result = await db.execute(
+            delete(TelegramChat)
+            .where(TelegramChat.user_id == current_user.id)
+            .where(TelegramChat.chat_id == unlink_request.chat_id)
+        )
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Telegram chat not found or not linked to this user"
+            )
+    else:
+        # Unlink all chats
+        await db.execute(
+            delete(TelegramChat)
+            .where(TelegramChat.user_id == current_user.id)
+        )
+    
+    await db.commit()
+    
+    # Refresh link code
+    link_code = await AuthService.ensure_link_code(current_user, db)
+    
+    # Fetch remaining telegram chats
+    result = await db.execute(
+        select(TelegramChat)
+        .where(TelegramChat.user_id == current_user.id)
+        .order_by(TelegramChat.linked_at.desc())
     )
+    telegram_chats = result.scalars().all()
     
     return {
-        "id": str(user.id),
-        "email": user.email,
-        "telegram_chat_id": user.telegram_chat_id,
-        "telegram_username": user.telegram_username,
-        "link_code": user.link_code,
-        "created_at": user.created_at.isoformat(),
-        "status": user.status
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "telegram_chats": [
+            {
+                "chat_id": chat.chat_id,
+                "first_name": chat.first_name,
+                "last_name": chat.last_name,
+                "username": chat.username,
+                "linked_at": chat.linked_at.isoformat()
+            }
+            for chat in telegram_chats
+        ],
+        "link_code": link_code,
+        "created_at": current_user.created_at.isoformat(),
+        "status": current_user.status
     }
 
 

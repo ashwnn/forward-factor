@@ -31,8 +31,6 @@ def mock_user():
     user.id = "user-123"
     user.email = "test@example.com"
     user.password_hash = "hashed_password"
-    user.telegram_username = None
-    user.telegram_chat_id = None
     return user
 
 
@@ -209,27 +207,3 @@ class TestLinkCode:
         
         assert user is None
 
-
-# ============================================================================
-# Tests for unlink_telegram_username
-# ============================================================================
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-class TestUnlinkTelegram:
-    """Test Telegram unlinking."""
-    
-    async def test_unlink_success(self, mock_db, mock_user):
-        """✅ Clear telegram_chat_id and telegram_username."""
-        mock_user.telegram_username = "tg_user"
-        mock_user.telegram_chat_id = "12345"
-        
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_user
-        mock_db.execute.return_value = mock_result
-        
-        user = await AuthService.unlink_telegram_username("user-123", mock_db)
-        
-        assert user.telegram_username is None
-        assert user.telegram_chat_id is None
-        mock_db.commit.assert_called_once()
