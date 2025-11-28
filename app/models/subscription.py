@@ -16,7 +16,7 @@ class Subscription(Base):
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     ticker = Column(String, primary_key=True, index=True)
     active = Column(Boolean, default=True, nullable=False)
-    added_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    added_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     
     # Relationships
     user = relationship("User", back_populates="subscriptions")

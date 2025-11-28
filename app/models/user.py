@@ -29,7 +29,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=True, index=True)
     password_hash = Column(String, nullable=True)
     telegram_username = Column(String, nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     status = Column(String, default="active", nullable=False)
     
     # Relationships

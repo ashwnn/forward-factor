@@ -13,7 +13,7 @@ class Signal(Base):
     # Composite primary key for TimescaleDB hypertable
     # TimescaleDB requires partitioning column (as_of_ts) to be part of primary key
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    as_of_ts = Column(DateTime, primary_key=True, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
+    as_of_ts = Column(DateTime(timezone=True), primary_key=True, default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     ticker = Column(String, nullable=False, index=True)
     front_expiry = Column(Date, nullable=False)
     back_expiry = Column(Date, nullable=False)
@@ -42,7 +42,7 @@ class OptionChainSnapshot(Base):
     # Composite primary key for TimescaleDB hypertable
     # TimescaleDB requires partitioning column (as_of_ts) to be part of primary key
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    as_of_ts = Column(DateTime, primary_key=True, default=lambda: datetime.now(timezone.utc), nullable=False)
+    as_of_ts = Column(DateTime(timezone=True), primary_key=True, default=lambda: datetime.now(timezone.utc), nullable=False)
     ticker = Column(String, nullable=False, index=True)
     provider = Column(String, nullable=False)
     underlying_price = Column(Float, nullable=True)
